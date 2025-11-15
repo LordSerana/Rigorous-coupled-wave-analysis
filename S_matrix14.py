@@ -240,14 +240,14 @@ def Compute(Constant,layers,plot=False):
     S_global=Star(Sref,S_global)
     #####全局散射矩阵计算完成,计算效率
     R_effi,T_effi=calcEffi(Constant['p'],Constant,S_global)
-    Constant['R_effi']=R_effi
-    Constant['T_effi']=T_effi
     #####标记正常传输级次
     real_mask=np.abs(np.imag(np.diag(Constant['kzref'])))<Constant['accuracy']
     real_set=Constant['mx'][real_mask]
     real_set_ind=np.where(real_mask)
     Constant['real_set']=real_set
     Constant['real_set_ind']=real_set_ind
+    Constant['R_effi']=R_effi[real_set_ind]
+    Constant['T_effi']=T_effi[real_set_ind]
     #####绘制效率曲线
     if plot==True:
     # VirtualLab_R=[0.0060481,0.013476,0.0063769,0.055142,0.021614,0.21037,0.22983,0.21037,0.021614,0.055142,0.0063769,0.013476,0.0060481]#Al,45°线偏振光,矩形
@@ -263,6 +263,11 @@ def Compute(Constant,layers,plot=False):
         print("sum:"+str(sum(R_effi[real_set_ind])))
     return Constant
     
+def Error(array1,array2):
+    abs_error=abs(array2-array1)
+    rela_error=abs(abs_error/array1)
+    return max(abs_error),max(rela_error)
+
 ###########################设定仿真常数################################
 thetai=np.radians(0)#入射角thetai
 phi=np.radians(0)#入射角phi
@@ -272,13 +277,18 @@ n2=1.4482+7.5367j
 pTM=0
 pTE=1
 Constant=Set_Polarization(thetai,phi,wavelength,n1,pTM,pTE)
-Constant['n_Tr']=2*15+1
+m=15
+Constant['n_Tr']=2*m+1
 Constant['mx']=np.arange(-(Constant['n_Tr']//2),Constant['n_Tr']//2+1)
 Constant['my']=np.arange(-(Constant['n_Tr']//2),Constant['n_Tr']//2+1)
 Constant['period']=4*1e-6
 Constant['Nx']=2**10
 Constant['n2']=n2
 Constant['accuracy']=1e-9
+Constant['error']=0.001#相对误差
+R_effi=[]
+Abs_error=[]
+Rela_error=[]
 ############################设定仿真设备层#################################
 layers=[
     Layer(n=1,t=1*1e-6),
@@ -286,4 +296,17 @@ layers=[
     Layer(n=1.4482+7.5367j,t=4*1e-6)
     ]
 
-Compute(Constant,layers,plot=True)
+n=0
+for m in range(15,40):
+    Constant['n_Tr']=2*m+1
+    Constant['mx']=np.arange(-(Constant['n_Tr']//2),Constant['n_Tr']//2+1)
+    Constant['my']=np.arange(-(Constant['n_Tr']//2),Constant['n_Tr']//2+1)
+    Constant=Compute(Constant,layers,plot=False)
+    R_effi.append(Constant['R_effi'])
+    if n!=0:
+        abs_error,rela_error=Error(R_effi[-2],R_effi[-1])
+        Abs_error.append(abs_error)
+        Rela_error.append(rela_error)
+    n+=1
+print("最大绝对误差:"+str(abs_error))#绝对误差
+print("最大相对误差:"+str(rela_error))#相对误差
