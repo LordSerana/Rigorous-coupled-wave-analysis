@@ -3,6 +3,7 @@ from S_matrix.Set_polarization import Set_Polarization
 from C_Method.Grating import Triangular
 from C_Method.F_series_gen import F_series_gen
 from C_Method.Toeplitze import Toeplitz
+from S_matrix.Layer import Layer
 
 def layer_mode(layer,Constant):
     #计算介电常数卷积矩阵
@@ -41,12 +42,34 @@ def Compute(Constant,layers,plot=False):
     c=Toeplitz(c,nDim)
     s=1/np.sqrt(1+a_diff_vec**2,dtype=complex)
     s=Toeplitz(s,nDim)
-    E,E_recip_inv=layer_mode(layers,Constant)
-    A=c@E_recip_inv@c+s@E@s
-    B=s@E@c-c@E_recip_inv@s
-    C=c@E@s-s@E_recip_inv@c
-    D=s@E_recip_inv@s+c@E@c
-    M11=-kx@np.linalg.inv(D)@C
+    for i in layers[1:-1]:
+        E,E_recip_inv=layer_mode(i,Constant)
+        A=c@E_recip_inv@c+s@E@s
+        B=s@E@c-c@E_recip_inv@s
+        C=c@E@s-s@E_recip_inv@c
+        D=s@E_recip_inv@s+c@E@c
+        D_inv=np.linalg.inv(D)
+        M11=-kx@D_inv@C
+        M12=np.zeros_like(M11)
+        M13=-kx@D_inv@ky
+        M14=np.ones_like(M11)+kx@D_inv@kx
+        M21=-ky@D_inv@C
+        M22=np.zeros_like(M11)
+        M23=-(ky@D_inv@ky+np.ones_like(M11))
+        M24=ky@D_inv@kx
+        M31=-kx@ky
+        M32=kx@kx+E
+        M33=np.zeros_like(M11)
+        M34=np.zeros_like(M11)
+        M41=-kx@ky-A+B@D_inv@C
+        M42=ky@kx
+        M43=B@D_inv@ky
+        M44=-B@D_inv@kx
+        M=np.block([[M11,M12,M13,M14],[M21,M22,M23,M24],[M31,M32,M33,M34],[M41,M42,M43,M44]])
+        #########构造P、Q、R矩阵
+        LAM,W=np.linalg.eig(M)
+        P=np.exp(LAM*Constant['k0']*Constant['depth'])
+        Q11=ky
 
 ###########################设定仿真常数################################
 thetai=np.radians(0)#入射角thetai
@@ -78,3 +101,11 @@ grating=Triangular(4*1e-6,30,1)
 a,a_diff=grating.profile()
 Constant['a']=a
 Constant['diff_a']=a_diff
+Constant['depth']=Constant['period']/2*np.tan(np.radians(30))
+#####################################################################
+layers=[
+    Layer(n=1,t=1*1e-6),
+    Layer(n=1.4482+7.5367j,t=1.8*1e-6,fill_factor=0.5),
+    Layer(n=1.4482+7.5367j,t=4*1e-6)
+    ]
+Compute(Constant,layers)
