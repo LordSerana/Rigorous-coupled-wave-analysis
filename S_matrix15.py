@@ -27,8 +27,15 @@ def Calculate_Poynting(Eigenvector):
     '''
     num=np.shape(Eigenvector)[1]
     Poynting_Result=np.zeros((1,num),dtype=float)
+    block_size=int(num/4)
     for i in range(num):
+        temp=Eigenvector[:,i]
+        Ex=temp[:block_size]
+        Ey=temp[block_size:2*block_size]
+        Hx=temp[2*block_size:3*block_size]
+        Hy=temp[3*block_size:]
         
+        pass
 
 def SortEigenvalue(Eigenvector,Eigenvalue,tol):
     '''
