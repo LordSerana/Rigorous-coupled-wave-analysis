@@ -21,6 +21,23 @@ def layer_mode(layer,Constant):
     E_recip_inv=np.linalg.inv(E_recip)
     return E,E_recip_inv
 
+def Calculate_Poynting(Eigenvector):
+    '''
+    本函数用于计算本征模态的坡印廷矢量
+    '''
+    num=np.shape(Eigenvector)[1]
+    Poynting_Result=np.zeros((1,num),dtype=float)
+    for i in range(num):
+        
+
+def SortEigenvalue(Eigenvector,Eigenvalue,tol):
+    '''
+    本函数用于对Eigenvalue进行排序
+    '''
+    posetive_ind=(abs(np.imag(Eigenvalue))<tol)&np.real(Eigenvalue)>tol
+    posetive=Eigenvalue[posetive_ind]
+    
+    
 def Compute(Constant,layers,plot=False):
     kinc=Constant['kinc']
     kx=np.diag(kinc[0]-2*np.pi*Constant['mx']/Constant['k0']/Constant['period'])
@@ -68,8 +85,7 @@ def Compute(Constant,layers,plot=False):
         M=np.block([[M11,M12,M13,M14],[M21,M22,M23,M24],[M31,M32,M33,M34],[M41,M42,M43,M44]])
         #########构造P、Q、R矩阵
         LAM,W=np.linalg.eig(M)
-        P=np.exp(LAM*Constant['k0']*Constant['depth'])
-        Q11=ky
+        Calculate_Poynting(W)
 
 ###########################设定仿真常数################################
 thetai=np.radians(0)#入射角thetai
