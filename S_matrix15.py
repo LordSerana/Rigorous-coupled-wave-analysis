@@ -23,7 +23,7 @@ def layer_mode(layer,Constant):
 
 def Calculate_Poynting(Eigenvector,Eigenvalue):
     '''
-    本函数用于计算本征模态的坡印廷矢量
+    本函数用于计算本征模态的坡印廷矢量,根据计算结果的正负进行排序
     '''
     num=np.shape(Eigenvector)[1]
     Poynting_Result=np.zeros((1,num),dtype=float)
@@ -42,16 +42,119 @@ def Calculate_Poynting(Eigenvector,Eigenvalue):
     Eigenvalue=Eigenvalue[new_ind[1]]
     Eigenvector=Eigenvector[:,new_ind[1]]
     #需要进一步对Eigenvector和Eigenvalue排序，按照Eigenvalue虚部降序排序
-    pass
+    # temp=Eigenvalue.real**2+Eigenvalue.imag**2
+    return Eigenvector,Eigenvalue
 
-def SortEigenvalue(Eigenvector,Eigenvalue,tol):
-    '''
-    本函数用于对Eigenvalue进行排序
-    '''
-    posetive_ind=(abs(np.imag(Eigenvalue))<tol)&np.real(Eigenvalue)>tol
-    posetive=Eigenvalue[posetive_ind]
-    
-    
+def Calculate_Gap(kx,ky,Constant):
+    omega=1/np.sqrt(1+kx**2+ky**2)*np.block([[kx@ky,1+ky@ky],[-(np.eye(np.shape(kx)[0])+kx@kx),-kx@ky]])
+    zero=np.zeros_like(omega)
+    M=np.block([[zero,omega],[omega,zero]])
+    #是否需要排序呢？
+    LAM,W=np.linalg.eig(M)
+    half=np.shape(W[0,:])[1]
+    V_g_E_P=W[:half,:half]
+    V_g_E_N=W[:half,half:]
+    V_g_H_P=W[half:,:half]
+    V_g_H_N=W[half:,half:]
+    Constant['V_g_E_P']=V_g_E_P
+    Constant['V_g_E_N']=V_g_E_N
+    Constant['V_g_H_P']=V_g_H_P
+    Constant['V_g_H_N']=V_g_H_N
+    return Constant
+
+def Calculate_Ref(kx,ky,layers,Constant):
+    E,E_recip_inv=layer_mode(layers[0],Constant)
+    c=np.zeros((Constant['n_Tr'],Constant['n_Tr']))
+    s=np.eye((Constant['n_Tr'],Constant['n_Tr']))
+    A=c@E_recip_inv@c+s@E@s
+    B=s@E@c-c@E_recip_inv@s
+    C=c@E@s-s@E_recip_inv@c
+    D=s@E_recip_inv@s+c@E@c
+    D_inv=np.linalg.inv(D)
+    M11=-kx@D_inv@C
+    M12=np.zeros_like(M11)
+    M13=-kx@D_inv@ky
+    M14=np.ones_like(M11)+kx@D_inv@kx
+    M21=-ky@D_inv@C
+    M22=np.zeros_like(M11)
+    M23=-(ky@D_inv@ky+np.ones_like(M11))
+    M24=ky@D_inv@kx
+    M31=-kx@ky
+    M32=kx@kx+E
+    M33=np.zeros_like(M11)
+    M34=np.zeros_like(M11)
+    M41=-kx@ky-A+B@D_inv@C
+    M42=ky@kx
+    M43=B@D_inv@ky
+    M44=-B@D_inv@kx
+    M=np.block([[M11,M12,M13,M14],[M21,M22,M23,M24],[M31,M32,M33,M34],[M41,M42,M43,M44]])
+    LAM,W=np.linalg.eig(M)
+    #W是否需要排序呢？
+    V_g_E_P=Constant['V_g_E_P']
+    V_g_E_N=Constant['V_g_E_N']
+    V_g_H_P=Constant['V_g_H_P']
+    V_g_H_N=Constant['V_g_H_N']
+    temp1=np.block([[V_g_E_P,V_g_E_N],[V_g_H_P,V_g_H_N]])
+    temp=np.linalg.solve(temp1,W)
+    half=np.shape(temp)[0]//2
+    A=temp[:half,:half]
+    B=temp[:half,half:]
+    C=temp[half:,:half]
+    D=temp[half:,half:]
+    D_inv=np.linalg.inv(D)
+    S11=-D_inv@C
+    S12=D_inv
+    S21=A-B@D_inv@C
+    S22=B@D_inv
+    S_ref=np.block([[S11,S12],[S21,S22]])
+    return S_ref
+
+def Calculate_trn(kx,ky,layers,Constant):
+    E,E_recip_inv=layer_mode(layers[-1],Constant)
+    c=np.zeros((Constant['n_Tr'],Constant['n_Tr']))
+    s=np.eye((Constant['n_Tr'],Constant['n_Tr']))
+    A=c@E_recip_inv@c+s@E@s
+    B=s@E@c-c@E_recip_inv@s
+    C=c@E@s-s@E_recip_inv@c
+    D=s@E_recip_inv@s+c@E@c
+    D_inv=np.linalg.inv(D)
+    M11=-kx@D_inv@C
+    M12=np.zeros_like(M11)
+    M13=-kx@D_inv@ky
+    M14=np.ones_like(M11)+kx@D_inv@kx
+    M21=-ky@D_inv@C
+    M22=np.zeros_like(M11)
+    M23=-(ky@D_inv@ky+np.ones_like(M11))
+    M24=ky@D_inv@kx
+    M31=-kx@ky
+    M32=kx@kx+E
+    M33=np.zeros_like(M11)
+    M34=np.zeros_like(M11)
+    M41=-kx@ky-A+B@D_inv@C
+    M42=ky@kx
+    M43=B@D_inv@ky
+    M44=-B@D_inv@kx
+    M=np.block([[M11,M12,M13,M14],[M21,M22,M23,M24],[M31,M32,M33,M34],[M41,M42,M43,M44]])
+    LAM,W=np.linalg.eig(M)
+    V_g_E_P=Constant['V_g_E_P']
+    V_g_E_N=Constant['V_g_E_N']
+    V_g_H_P=Constant['V_g_H_P']
+    V_g_H_N=Constant['V_g_H_N']
+    temp1=np.block([[V_g_E_P,V_g_E_N],[V_g_H_P,V_g_H_N]])
+    temp=np.linalg.solve(temp1,W)
+    half=np.shape(temp)[0]//2
+    A=temp[:half,:half]
+    B=temp[:half,half:]
+    C=temp[half:,:half]
+    D=temp[half:,half:]
+    A_inv=np.linalg.inv(A)
+    S11=C@A_inv
+    S12=D-C@A_inv@B
+    S21=A_inv
+    S22=-A_inv@B
+    S_trn=np.block([[S11,S12],[S21,S22]])
+    return S_trn
+
 def Compute(Constant,layers,plot=False):
     kinc=Constant['kinc']
     kx=np.diag(kinc[0]-2*np.pi*Constant['mx']/Constant['k0']/Constant['period'])
@@ -73,6 +176,11 @@ def Compute(Constant,layers,plot=False):
     c=Toeplitz(c,nDim)
     s=1/np.sqrt(1+a_diff_vec**2,dtype=complex)
     s=Toeplitz(s,nDim)
+    V_g_E_P=Constant['V_g_E_P']
+    V_g_E_N=Constant['V_g_E_N']
+    V_g_H_P=Constant['V_g_H_P']
+    V_g_H_N=Constant['V_g_H_N']
+    temp1=np.block([[V_g_E_P,V_g_E_N],[V_g_H_P,V_g_H_N]])#Gap_medium的散射矩阵
     for i in layers[1:-1]:
         E,E_recip_inv=layer_mode(i,Constant)
         A=c@E_recip_inv@c+s@E@s
@@ -97,9 +205,28 @@ def Compute(Constant,layers,plot=False):
         M43=B@D_inv@ky
         M44=-B@D_inv@kx
         M=np.block([[M11,M12,M13,M14],[M21,M22,M23,M24],[M31,M32,M33,M34],[M41,M42,M43,M44]])
-        #########构造P、Q、R矩阵
+        #########计算EigenVector和Eigenvalue，并进行排序
         LAM,W=np.linalg.eig(M)
-        Calculate_Poynting(W,LAM)
+        Eigenvector,Eigenvalue=Calculate_Poynting(W,LAM)
+        #########构造S矩阵
+        temp=np.linalg.solve(Eigenvector,temp1)
+        half=np.shape(temp)[0]//2
+        A=temp[:half,:half]
+        B=temp[:half,half:]
+        C=temp[half:,:half]
+        D=temp[half:,half:]
+        A_inv=np.linalg.inv(A)
+        D_inv=np.linalg.inv(D)
+        half=np.shape(Eigenvalue)[0]//2
+        X_P=np.diag(np.exp(Eigenvalue[:half]*Constant['k0']*Constant['depth']))
+        X_N=np.diag(np.exp(-Eigenvalue[half:]*Constant['k0']*Constant['depth']))
+        S11=np.linalg.solve(D-X_N@C@A_inv@X_P@B,X_N@C@A_inv@X_P@A-C)
+        temp=X_N@(D-C@A_inv@B)
+        S12=np.linalg.solve(D-X_N@C@A_inv@X_P@B,temp)
+        temp=X_P@(A-B@D_inv@C)
+        S21=np.linalg.solve(A-X_P@B@D_inv@X_N@C,temp)
+        S22=np.linalg.solve(A-X_P@B@D_inv@X_N@C,X_P@B@D_inv@X_N@D-B)
+        S=np.block([[S11,S12],[S21,S22]])
 
 ###########################设定仿真常数################################
 thetai=np.radians(0)#入射角thetai
@@ -126,7 +253,7 @@ Constant['error']=0.001#相对误差
 R_effi=[]
 Abs_error=[]
 Rela_error=[]
-#######################################################################
+#####################设定光栅参数#####################################
 grating=Triangular(4*1e-6,30,1)
 a,a_diff=grating.profile()
 Constant['a']=a
