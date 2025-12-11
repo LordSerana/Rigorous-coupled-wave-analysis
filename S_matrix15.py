@@ -4,6 +4,13 @@ from C_Method.Grating import Triangular
 from C_Method.F_series_gen import F_series_gen
 from C_Method.Toeplitze import Toeplitz
 from S_matrix.Layer import Layer
+from S_matrix.Star import Star
+from S_matrix.CalcEffi import calcEffi
+from S_matrix.Plot_Effi import Plot_Effi
+import matplotlib.pyplot as plt
+
+plt.rcParams['font.sans-serif']=['SimHei']
+plt.rcParams['axes.unicode_minus']=False#解决plt画图中文乱码问题
 
 def layer_mode(layer,Constant):
     #计算介电常数卷积矩阵
@@ -46,12 +53,12 @@ def Calculate_Poynting(Eigenvector,Eigenvalue):
     return Eigenvector,Eigenvalue
 
 def Calculate_Gap(kx,ky,Constant):
-    omega=1/np.sqrt(1+kx**2+ky**2)*np.block([[kx@ky,1+ky@ky],[-(np.eye(np.shape(kx)[0])+kx@kx),-kx@ky]])
+    omega=np.block([[kx@ky,1+ky@ky],[-(np.eye(np.shape(kx)[0])+kx@kx),-kx@ky]])
     zero=np.zeros_like(omega)
     M=np.block([[zero,omega],[omega,zero]])
     #是否需要排序呢？
     LAM,W=np.linalg.eig(M)
-    half=np.shape(W[0,:])[1]
+    half=np.shape(W[0,:])[0]//2
     V_g_E_P=W[:half,:half]
     V_g_E_N=W[:half,half:]
     V_g_H_P=W[half:,:half]
@@ -64,8 +71,9 @@ def Calculate_Gap(kx,ky,Constant):
 
 def Calculate_Ref(kx,ky,layers,Constant):
     E,E_recip_inv=layer_mode(layers[0],Constant)
-    c=np.zeros((Constant['n_Tr'],Constant['n_Tr']))
-    s=np.eye((Constant['n_Tr'],Constant['n_Tr']))
+    nDim=Constant['n_Tr']
+    c=np.zeros((nDim,nDim))
+    s=np.eye(nDim)
     A=c@E_recip_inv@c+s@E@s
     B=s@E@c-c@E_recip_inv@s
     C=c@E@s-s@E_recip_inv@c
@@ -112,7 +120,7 @@ def Calculate_Ref(kx,ky,layers,Constant):
 def Calculate_trn(kx,ky,layers,Constant):
     E,E_recip_inv=layer_mode(layers[-1],Constant)
     c=np.zeros((Constant['n_Tr'],Constant['n_Tr']))
-    s=np.eye((Constant['n_Tr'],Constant['n_Tr']))
+    s=np.eye((Constant['n_Tr']))
     A=c@E_recip_inv@c+s@E@s
     B=s@E@c-c@E_recip_inv@s
     C=c@E@s-s@E_recip_inv@c
@@ -157,15 +165,15 @@ def Calculate_trn(kx,ky,layers,Constant):
 
 def Compute(Constant,layers,plot=False):
     kinc=Constant['kinc']
-    kx=np.diag(kinc[0]-2*np.pi*Constant['mx']/Constant['k0']/Constant['period'])
+    kx=np.diag(kinc[0]-2*np.pi*Constant['mx']/Constant['k0']/Constant['period'])#已经归一化
     Constant['kx']=kx
-    # temp=Constant['n_Tr']//2
-    ky=np.diag(kinc[1]-2*np.pi*Constant['mx']/Constant['k0']/Constant['period'])
+    temp=Constant['n_Tr']//2
+    ky=np.diag(kinc[1]-2*np.pi*Constant['mx']/Constant['k0']/Constant['period'])#已经归一化
     Constant['ky']=ky
-    # kzref=np.zeros((2*temp+1,2*temp+1),dtype=complex)
-    # for i in range(2*temp+1):
-    #     kzref[i,i]=np.sqrt(Constant['n1']**2-kx[i,i]**2,dtype=complex)
-    # Constant['kzref']=-kzref
+    kzref=np.zeros((2*temp+1,2*temp+1),dtype=complex)
+    for i in range(2*temp+1):
+        kzref[i,i]=np.sqrt(Constant['n1']**2-kx[i,i]**2,dtype=complex)
+    Constant['kzref']=-kzref
     nDim=Constant['n_Tr']
     gamma=np.sqrt(kx**2+ky**2,dtype=complex)
     kmz1=np.sqrt(Constant['omiga']**2*Constant['e1']-gamma**2)
@@ -176,11 +184,17 @@ def Compute(Constant,layers,plot=False):
     c=Toeplitz(c,nDim)
     s=1/np.sqrt(1+a_diff_vec**2,dtype=complex)
     s=Toeplitz(s,nDim)
+    #############计算间隙介质的散射矩阵
+    Constant=Calculate_Gap(kx,ky,Constant)
     V_g_E_P=Constant['V_g_E_P']
     V_g_E_N=Constant['V_g_E_N']
     V_g_H_P=Constant['V_g_H_P']
     V_g_H_N=Constant['V_g_H_N']
     temp1=np.block([[V_g_E_P,V_g_E_N],[V_g_H_P,V_g_H_N]])#Gap_medium的散射矩阵
+    zero=np.zeros((2*nDim,2*nDim))
+    S_global=np.block([[zero,np.eye(2*nDim)],[np.eye(2*nDim),zero]])
+    S_ref=Calculate_Ref(kx,ky,layers,Constant)
+    S_global=Star(S_global,S_ref)
     for i in layers[1:-1]:
         E,E_recip_inv=layer_mode(i,Constant)
         A=c@E_recip_inv@c+s@E@s
@@ -227,7 +241,11 @@ def Compute(Constant,layers,plot=False):
         S21=np.linalg.solve(A-X_P@B@D_inv@X_N@C,temp)
         S22=np.linalg.solve(A-X_P@B@D_inv@X_N@C,X_P@B@D_inv@X_N@D-B)
         S=np.block([[S11,S12],[S21,S22]])
-
+        S_global=Star(S_global,S)
+    S_trn=Calculate_trn(kx,ky,layers,Constant)
+    S_global=Star(S_global,S_trn)
+    R_effi,T_effi=calcEffi(Constant['p'],Constant,S_global)
+    Plot_Effi(R_effi,T_effi,Constant)
 ###########################设定仿真常数################################
 thetai=np.radians(0)#入射角thetai
 phi=np.radians(0)#入射角phi
@@ -250,7 +268,7 @@ Constant['c']=299792458
 Constant['omiga']=2*np.pi*Constant['c']/Constant['wavelength']
 Constant['accuracy']=1e-9
 Constant['error']=0.001#相对误差
-R_effi=[]
+# R_effi=[]
 Abs_error=[]
 Rela_error=[]
 #####################设定光栅参数#####################################
