@@ -179,10 +179,12 @@ def Compute(Constant,layers,plot=False):
     kmz1=np.sqrt(Constant['omiga']**2*Constant['e1']-gamma**2)
     kmz2=np.sqrt(Constant['omiga']**2*Constant['e2']-gamma**2)
     ###构造M矩阵
-    a_diff_vec=F_series_gen(Constant['a'],10,Constant['period'],nDim)
-    c=a_diff_vec/np.sqrt(1+a_diff_vec**2,dtype=complex)
+    x=np.linspace(0,Constant['period'],2**10)
+    temp=Constant['diff_a']
+    diff_a=temp(x)
+    c=diff_a/np.sqrt(1+diff_a*diff_a,dtype=complex)#遗漏了一步傅里叶变换
     c=Toeplitz(c,nDim)
-    s=1/np.sqrt(1+a_diff_vec**2,dtype=complex)
+    s=1/np.sqrt(1+diff_a*diff_a,dtype=complex)
     s=Toeplitz(s,nDim)
     #############计算间隙介质的散射矩阵
     Constant=Calculate_Gap(kx,ky,Constant)
