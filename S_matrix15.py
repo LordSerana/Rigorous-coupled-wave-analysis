@@ -34,7 +34,7 @@ def Calculate_Poynting(Eigenvector,Eigenvalue):
     本函数用于计算本征模态的坡印廷矢量,根据计算结果的正负进行排序
     '''
     num=np.shape(Eigenvector)[1]
-    Poynting_Result=np.zeros((1,num),dtype=float)
+    Poynting_Result=np.zeros(num,dtype=float)
     block_size=int(num/4)
     for i in range(num):
         temp=Eigenvector[:,i]
@@ -42,13 +42,22 @@ def Calculate_Poynting(Eigenvector,Eigenvalue):
         Ey=temp[block_size:2*block_size]
         Hx=temp[2*block_size:3*block_size]
         Hy=temp[3*block_size:]
-        Poynting_Result[0,i]=np.real(np.dot(1j*Ex,np.conj(Hy))-np.dot(1j*Ey,np.conj(Hx)))
+        Poynting_Result[i]=np.real(np.dot(1j*Ex,np.conj(Hy))-np.dot(1j*Ey,np.conj(Hx)))
     #首先对Poynting向量初步排序，正的排在前半，负的排在后半
-    Poynting_P_ind=np.where(Poynting_Result>=0)
+    zero=np.where(Poynting_Result==0)
+    zero_p=np.where(Eigenvalue[zero].real>0)
+    p=zero[0][zero_p]
+    Poynting_P_ind=np.concatenate([np.where(Poynting_Result>0)[0],p])
+    Poynting_P_ind=np.sort(Poynting_P_ind)#坡印廷矢量为正，按升序排列
+    ##############坡印廷矢量中负的项的排序
     Poynting_N_ind=np.where(Poynting_Result<0)
-    new_ind=np.concatenate([Poynting_P_ind,Poynting_N_ind],axis=1)
-    Eigenvalue=Eigenvalue[new_ind[1]]
-    Eigenvector=Eigenvector[:,new_ind[1]]
+    zero_n=np.where(Eigenvalue[zero].real<0)
+    n=zero[0][zero_n]
+    Poynting_N_ind=np.concatenate([np.where(Poynting_Result<0)[0],n])
+    Poynting_N_ind=np.sort(Poynting_N_ind)#坡印廷矢量为负，按升序排列
+    new_ind=np.concatenate([Poynting_P_ind,Poynting_N_ind])
+    Eigenvalue=Eigenvalue[new_ind]
+    Eigenvector=Eigenvector[:,new_ind]
     #需要进一步对Eigenvector和Eigenvalue排序，按照Eigenvalue虚部降序排序
     # temp=Eigenvalue.real**2+Eigenvalue.imag**2
     return Eigenvector,Eigenvalue
@@ -59,11 +68,12 @@ def Calculate_Gap(kx,ky,Constant):
     M=np.block([[zero,omega],[omega,zero]])
     #是否需要排序呢？
     LAM,W=np.linalg.eig(M)
-    half=np.shape(W[0,:])[0]//2
-    V_g_E_P=W[:half,:half]
-    V_g_E_N=W[:half,half:]
-    V_g_H_P=W[half:,:half]
-    V_g_H_N=W[half:,half:]
+    Eigenvector,Eigenvalue=Calculate_Poynting(W,LAM)
+    half=np.shape(Eigenvector[0,:])[0]//2
+    V_g_E_P=Eigenvector[:half,:half]
+    V_g_E_N=Eigenvector[:half,half:]
+    V_g_H_P=Eigenvector[half:,:half]
+    V_g_H_N=Eigenvector[half:,half:]
     Constant['V_g_E_P']=V_g_E_P
     Constant['V_g_E_N']=V_g_E_N
     Constant['V_g_H_P']=V_g_H_P
@@ -98,13 +108,13 @@ def Calculate_Ref(kx,ky,layers,Constant):
     M44=-B@D_inv@kx
     M=np.block([[M11,M12,M13,M14],[M21,M22,M23,M24],[M31,M32,M33,M34],[M41,M42,M43,M44]])
     LAM,W=np.linalg.eig(M)
-    #W是否需要排序呢？
+    Eigenvector,Eigenvalue=Calculate_Poynting(W,LAM)
     V_g_E_P=Constant['V_g_E_P']
     V_g_E_N=Constant['V_g_E_N']
     V_g_H_P=Constant['V_g_H_P']
     V_g_H_N=Constant['V_g_H_N']
     temp1=np.block([[V_g_E_P,V_g_E_N],[V_g_H_P,V_g_H_N]])
-    temp=np.linalg.solve(temp1,W)
+    temp=np.linalg.solve(temp1,Eigenvector)
     half=np.shape(temp)[0]//2
     A=temp[:half,:half]
     B=temp[:half,half:]
@@ -145,12 +155,13 @@ def Calculate_trn(kx,ky,layers,Constant):
     M44=-B@D_inv@kx
     M=np.block([[M11,M12,M13,M14],[M21,M22,M23,M24],[M31,M32,M33,M34],[M41,M42,M43,M44]])
     LAM,W=np.linalg.eig(M)
+    Eigenvector,Eigenvalue=Calculate_Poynting(W,LAM)
     V_g_E_P=Constant['V_g_E_P']
     V_g_E_N=Constant['V_g_E_N']
     V_g_H_P=Constant['V_g_H_P']
     V_g_H_N=Constant['V_g_H_N']
     temp1=np.block([[V_g_E_P,V_g_E_N],[V_g_H_P,V_g_H_N]])
-    temp=np.linalg.solve(temp1,W)
+    temp=np.linalg.solve(temp1,Eigenvector)
     half=np.shape(temp)[0]//2
     A=temp[:half,:half]
     B=temp[:half,half:]
@@ -169,16 +180,17 @@ def Compute(Constant,layers,plot=False):
     kx=np.diag(kinc[0]-2*np.pi*Constant['mx']/Constant['k0']/Constant['period'])#已经归一化
     Constant['kx']=kx
     temp=Constant['n_Tr']//2
-    ky=np.diag(kinc[1]-2*np.pi*Constant['mx']/Constant['k0']/Constant['period'])#已经归一化
+    if Constant['dimension']==1:
+        ky=np.zeros_like(kx)
+        ky[temp,temp]=kinc[1]
+    else:
+        ky=np.diag(kinc[1]-2*np.pi*Constant['my']/Constant['k0']/Constant['period'])#已经归一化
     Constant['ky']=ky
     kzref=np.zeros((2*temp+1,2*temp+1),dtype=complex)
     for i in range(2*temp+1):
         kzref[i,i]=np.sqrt(Constant['n1']**2-kx[i,i]**2,dtype=complex)
     Constant['kzref']=-kzref
     nDim=Constant['n_Tr']
-    gamma=np.sqrt(kx**2+ky**2,dtype=complex)
-    kmz1=np.sqrt(Constant['omiga']**2*Constant['e1']-gamma**2)
-    kmz2=np.sqrt(Constant['omiga']**2*Constant['e2']-gamma**2)
     ###构造M矩阵
     x=np.linspace(0,Constant['period'],2**10)
     temp=Constant['diff_a']
@@ -279,6 +291,7 @@ Rela_error=[]
 #####################设定光栅参数#####################################
 grating=Triangular(4*1e-6,30,1)
 a,a_diff=grating.profile()
+Constant['dimension']=1#光栅是一维光栅
 Constant['a']=a
 Constant['diff_a']=a_diff
 Constant['depth']=Constant['period']/2*np.tan(np.radians(30))
