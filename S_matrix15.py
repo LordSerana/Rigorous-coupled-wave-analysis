@@ -8,6 +8,7 @@ from S_matrix.Star import Star
 from S_matrix.CalcEffi import calcEffi
 from S_matrix.Plot_Effi import Plot_Effi
 import matplotlib.pyplot as plt
+from S_matrix.F_series_gen import F_series_gen
 
 plt.rcParams['font.sans-serif']=['SimHei']
 plt.rcParams['axes.unicode_minus']=False#解决plt画图中文乱码问题
@@ -183,9 +184,11 @@ def Compute(Constant,layers,plot=False):
     temp=Constant['diff_a']
     diff_a=temp(x)
     c=diff_a/np.sqrt(1+diff_a*diff_a,dtype=complex)#遗漏了一步傅里叶变换
-    c=Toeplitz(c,nDim)
+    temp=F_series_gen(c,nDim)
+    c=Toeplitz(temp,nDim)
     s=1/np.sqrt(1+diff_a*diff_a,dtype=complex)
-    s=Toeplitz(s,nDim)
+    temp=F_series_gen(s,nDim)
+    s=Toeplitz(temp,nDim)
     #############计算间隙介质的散射矩阵
     Constant=Calculate_Gap(kx,ky,Constant)
     V_g_E_P=Constant['V_g_E_P']
@@ -282,7 +285,7 @@ Constant['depth']=Constant['period']/2*np.tan(np.radians(30))
 #####################################################################
 layers=[
     Layer(n=1,t=1*1e-6),
-    Layer(n=1.4482+7.5367j,t=1.8*1e-6,fill_factor=0.5),
+    Layer(n=1.4482+7.5367j,t=1.8*1e-6,fill_factor=1),
     Layer(n=1.4482+7.5367j,t=4*1e-6)
     ]
 Compute(Constant,layers)
