@@ -1,7 +1,8 @@
 import numpy as np
+import sys
+sys.path.append("E:/Project/Python")
 from S_matrix.Set_polarization import Set_Polarization
 from C_Method.Grating import Triangular
-from C_Method.F_series_gen import F_series_gen
 from C_Method.Toeplitze import Toeplitz
 from S_matrix.Layer import Layer
 from S_matrix.Star import Star
@@ -9,6 +10,9 @@ from S_matrix.CalcEffi import calcEffi
 from S_matrix.Plot_Effi import Plot_Effi
 import matplotlib.pyplot as plt
 from S_matrix.F_series_gen import F_series_gen
+from S_matrix.Calculate_Poynting import Calculate_Poynting
+from S_matrix.Homogeneous_isotropic_matrix import homogeneous_isotropic_matrix
+from S_matrix.Build_scatter_side import build_scatter_side
 
 plt.rcParams['font.sans-serif']=['SimHei']
 plt.rcParams['axes.unicode_minus']=False#解决plt画图中文乱码问题
@@ -29,38 +33,46 @@ def layer_mode(layer,Constant):
     E_recip_inv=np.linalg.inv(E_recip)
     return E,E_recip_inv
 
-def Calculate_Poynting(Eigenvector,Eigenvalue):
-    '''
-    本函数用于计算本征模态的坡印廷矢量,根据计算结果的正负进行排序
-    '''
-    num=np.shape(Eigenvector)[1]
-    Poynting_Result=np.zeros(num,dtype=float)
-    block_size=int(num/4)
-    for i in range(num):
-        temp=Eigenvector[:,i]
-        Ex=temp[:block_size]
-        Ey=temp[block_size:2*block_size]
-        Hx=temp[2*block_size:3*block_size]
-        Hy=temp[3*block_size:]
-        Poynting_Result[i]=np.real(np.dot(1j*Ex,np.conj(Hy))-np.dot(1j*Ey,np.conj(Hx)))
-    #首先对Poynting向量初步排序，正的排在前半，负的排在后半
-    zero=np.where(Poynting_Result==0)
-    zero_p=np.where(Eigenvalue[zero].real>0)
-    p=zero[0][zero_p]
-    Poynting_P_ind=np.concatenate([np.where(Poynting_Result>0)[0],p])
-    Poynting_P_ind=np.sort(Poynting_P_ind)#坡印廷矢量为正，按升序排列
-    ##############坡印廷矢量中负的项的排序
-    Poynting_N_ind=np.where(Poynting_Result<0)
-    zero_n=np.where(Eigenvalue[zero].real<0)
-    n=zero[0][zero_n]
-    Poynting_N_ind=np.concatenate([np.where(Poynting_Result<0)[0],n])
-    Poynting_N_ind=np.sort(Poynting_N_ind)#坡印廷矢量为负，按升序排列
-    new_ind=np.concatenate([Poynting_P_ind,Poynting_N_ind])
-    Eigenvalue=Eigenvalue[new_ind]
-    Eigenvector=Eigenvector[:,new_ind]
-    #需要进一步对Eigenvector和Eigenvalue排序，按照Eigenvalue虚部降序排序
-    # temp=Eigenvalue.real**2+Eigenvalue.imag**2
-    return Eigenvector,Eigenvalue
+# def Calculate_Poynting(Eigenvector,Eigenvalue):
+#     '''
+#     本函数用于计算本征模态的坡印廷矢量,根据计算结果的正负进行排序
+#     '''
+#     num=np.shape(Eigenvector)[1]
+#     Poynting_Result=np.zeros(num,dtype=float)
+#     block_size=int(num/4)
+#     for i in range(num):
+#         temp=Eigenvector[:,i]
+#         Ex=temp[:block_size]
+#         Ey=temp[block_size:2*block_size]
+#         Hx=temp[2*block_size:3*block_size]
+#         Hy=temp[3*block_size:]
+#         Poynting_Result[i]=np.real(np.dot(1j*Ex,np.conj(Hy))-np.dot(1j*Ey,np.conj(Hx)))
+#     #首先对Poynting向量初步排序，正的排在前半，负的排在后半
+#     zero=np.where(Poynting_Result==0)
+#     zero_p=np.where(Eigenvalue[zero].real>0)
+#     p=zero[0][zero_p]
+#     Poynting_P_ind=np.concatenate([np.where(Poynting_Result>0)[0],p])
+#     Poynting_P_ind=np.sort(Poynting_P_ind)#坡印廷矢量为正，按升序排列
+#     ##############坡印廷矢量中负的项的排序
+#     Poynting_N_ind=np.where(Poynting_Result<0)
+#     zero_n=np.where(Eigenvalue[zero].real<0)
+#     n=zero[0][zero_n]
+#     Poynting_N_ind=np.concatenate([np.where(Poynting_Result<0)[0],n])
+#     Poynting_N_ind=np.sort(Poynting_N_ind)#坡印廷矢量为负，按升序排列
+#     new_ind=np.concatenate([Poynting_P_ind,Poynting_N_ind])
+#     Eigenvalue=Eigenvalue[new_ind]
+#     Eigenvector=Eigenvector[:,new_ind]
+#     #需要进一步对Eigenvector和Eigenvalue排序，按照Eigenvalue虚部降序排序
+#     # temp=Eigenvalue.real**2+Eigenvalue.imag**2
+#     ####先采用虚部的绝对值排序，虚部为0则用实部的值
+#     temp=np.where(Eigenvalue.imag==0,Eigenvalue.real,Eigenvalue.imag)
+#     half=temp.shape[0]//2
+#     P_ind=np.argsort(-temp[:half])
+#     N_ind=np.argsort(-temp[half:])
+#     new_ind=np.concatenate([P_ind,N_ind+half])
+#     Eigenvalue=Eigenvalue[new_ind]
+#     Eigenvector=Eigenvector[:,new_ind]
+#     return Eigenvector,Eigenvalue
 
 def Calculate_Gap(kx,ky,Constant):
     omega=np.block([[kx@ky,1+ky@ky],[-(np.eye(np.shape(kx)[0])+kx@kx),-kx@ky]])
@@ -68,7 +80,7 @@ def Calculate_Gap(kx,ky,Constant):
     M=np.block([[zero,omega],[omega,zero]])
     #是否需要排序呢？
     LAM,W=np.linalg.eig(M)
-    Eigenvector,Eigenvalue=Calculate_Poynting(W,LAM)
+    Eigenvector,Eigenvalue=Calculate_Poynting(W,LAM,kx,Constant)
     half=np.shape(Eigenvector[0,:])[0]//2
     V_g_E_P=Eigenvector[:half,:half]
     V_g_E_N=Eigenvector[:half,half:]
@@ -83,96 +95,100 @@ def Calculate_Gap(kx,ky,Constant):
 def Calculate_Ref(kx,ky,layers,Constant):
     E,E_recip_inv=layer_mode(layers[0],Constant)
     nDim=Constant['n_Tr']
-    c=np.zeros((nDim,nDim))
-    s=np.eye(nDim)
-    A=c@E_recip_inv@c+s@E@s
-    B=s@E@c-c@E_recip_inv@s
-    C=c@E@s-s@E_recip_inv@c
-    D=s@E_recip_inv@s+c@E@c
-    D_inv=np.linalg.inv(D)
-    M11=-kx@D_inv@C
-    M12=np.zeros_like(M11)
-    M13=-kx@D_inv@ky
-    M14=np.ones_like(M11)+kx@D_inv@kx
-    M21=-ky@D_inv@C
-    M22=np.zeros_like(M11)
-    M23=-(ky@D_inv@ky+np.ones_like(M11))
-    M24=ky@D_inv@kx
-    M31=-kx@ky
-    M32=kx@kx+E
-    M33=np.zeros_like(M11)
-    M34=np.zeros_like(M11)
-    M41=-kx@ky-A+B@D_inv@C
-    M42=ky@kx
-    M43=B@D_inv@ky
-    M44=-B@D_inv@kx
-    M=np.block([[M11,M12,M13,M14],[M21,M22,M23,M24],[M31,M32,M33,M34],[M41,M42,M43,M44]])
-    LAM,W=np.linalg.eig(M)
-    Eigenvector,Eigenvalue=Calculate_Poynting(W,LAM)
-    V_g_E_P=Constant['V_g_E_P']
-    V_g_E_N=Constant['V_g_E_N']
-    V_g_H_P=Constant['V_g_H_P']
-    V_g_H_N=Constant['V_g_H_N']
-    temp1=np.block([[V_g_E_P,V_g_E_N],[V_g_H_P,V_g_H_N]])
-    temp=np.linalg.solve(temp1,Eigenvector)
-    half=np.shape(temp)[0]//2
-    A=temp[:half,:half]
-    B=temp[:half,half:]
-    C=temp[half:,:half]
-    D=temp[half:,half:]
-    D_inv=np.linalg.inv(D)
-    S11=-D_inv@C
-    S12=D_inv
-    S21=A-B@D_inv@C
-    S22=B@D_inv
-    S_ref=np.block([[S11,S12],[S21,S22]])
+    # c=np.zeros((nDim,nDim))
+    # s=np.eye(nDim)
+    # A=c@E_recip_inv@c+s@E@s
+    # B=s@E@c-c@E_recip_inv@s
+    # C=c@E@s-s@E_recip_inv@c
+    # D=s@E_recip_inv@s+c@E@c
+    # D_inv=np.linalg.inv(D)
+    # M11=-kx@D_inv@C
+    # M12=np.zeros_like(M11)
+    # M13=-kx@D_inv@ky
+    # M14=np.ones_like(M11)+kx@D_inv@kx
+    # M21=-ky@D_inv@C
+    # M22=np.zeros_like(M11)
+    # M23=-(ky@D_inv@ky+np.ones_like(M11))
+    # M24=ky@D_inv@kx
+    # M31=-kx@ky
+    # M32=kx@kx+E
+    # M33=np.zeros_like(M11)
+    # M34=np.zeros_like(M11)
+    # M41=-kx@ky-A+B@D_inv@C
+    # M42=ky@kx
+    # M43=B@D_inv@ky
+    # M44=-B@D_inv@kx
+    # M=np.block([[M11,M12,M13,M14],[M21,M22,M23,M24],[M31,M32,M33,M34],[M41,M42,M43,M44]])
+    # LAM,W=np.linalg.eig(M)
+    Sref,W,LAM=build_scatter_side(Constant['e1'],1,kx,ky,Constant['W'])
+    # Eigenvector,Eigenvalue=Calculate_Poynting(W,LAM,kx,Constant)
+    # V_g_E_P=Constant['V_g_E_P']
+    # V_g_E_N=Constant['V_g_E_N']
+    # V_g_H_P=Constant['V_g_H_P']
+    # V_g_H_N=Constant['V_g_H_N']
+    # temp1=np.block([[V_g_E_P,V_g_E_N],[V_g_H_P,V_g_H_N]])
+    # temp=np.linalg.solve(temp1,Eigenvector)
+    # half=np.shape(temp)[0]//2
+    # A=temp[:half,:half]
+    # B=temp[:half,half:]
+    # C=temp[half:,:half]
+    # D=temp[half:,half:]
+    # D_inv=np.linalg.inv(D)
+    # S11=-D_inv@C
+    # S12=D_inv
+    # S21=A-B@D_inv@C
+    # S22=B@D_inv
+    # S_ref=np.block([[S11,S12],[S21,S22]])
+    S_ref=np.block([[Sref[0],Sref[1]],[Sref[2],Sref[3]]])
     return S_ref
 
 def Calculate_trn(kx,ky,layers,Constant):
     E,E_recip_inv=layer_mode(layers[-1],Constant)
-    c=np.zeros((Constant['n_Tr'],Constant['n_Tr']))
-    s=np.eye((Constant['n_Tr']))
-    A=c@E_recip_inv@c+s@E@s
-    B=s@E@c-c@E_recip_inv@s
-    C=c@E@s-s@E_recip_inv@c
-    D=s@E_recip_inv@s+c@E@c
-    D_inv=np.linalg.inv(D)
-    M11=-kx@D_inv@C
-    M12=np.zeros_like(M11)
-    M13=-kx@D_inv@ky
-    M14=np.ones_like(M11)+kx@D_inv@kx
-    M21=-ky@D_inv@C
-    M22=np.zeros_like(M11)
-    M23=-(ky@D_inv@ky+np.ones_like(M11))
-    M24=ky@D_inv@kx
-    M31=-kx@ky
-    M32=kx@kx+E
-    M33=np.zeros_like(M11)
-    M34=np.zeros_like(M11)
-    M41=-kx@ky-A+B@D_inv@C
-    M42=ky@kx
-    M43=B@D_inv@ky
-    M44=-B@D_inv@kx
-    M=np.block([[M11,M12,M13,M14],[M21,M22,M23,M24],[M31,M32,M33,M34],[M41,M42,M43,M44]])
-    LAM,W=np.linalg.eig(M)
-    Eigenvector,Eigenvalue=Calculate_Poynting(W,LAM)
-    V_g_E_P=Constant['V_g_E_P']
-    V_g_E_N=Constant['V_g_E_N']
-    V_g_H_P=Constant['V_g_H_P']
-    V_g_H_N=Constant['V_g_H_N']
-    temp1=np.block([[V_g_E_P,V_g_E_N],[V_g_H_P,V_g_H_N]])
-    temp=np.linalg.solve(temp1,Eigenvector)
-    half=np.shape(temp)[0]//2
-    A=temp[:half,:half]
-    B=temp[:half,half:]
-    C=temp[half:,:half]
-    D=temp[half:,half:]
-    A_inv=np.linalg.inv(A)
-    S11=C@A_inv
-    S12=D-C@A_inv@B
-    S21=A_inv
-    S22=-A_inv@B
-    S_trn=np.block([[S11,S12],[S21,S22]])
+    # c=np.zeros((Constant['n_Tr'],Constant['n_Tr']))
+    # s=np.eye((Constant['n_Tr']))
+    # A=c@E_recip_inv@c+s@E@s
+    # B=s@E@c-c@E_recip_inv@s
+    # C=c@E@s-s@E_recip_inv@c
+    # D=s@E_recip_inv@s+c@E@c
+    # D_inv=np.linalg.inv(D)
+    # M11=-kx@D_inv@C
+    # M12=np.zeros_like(M11)
+    # M13=-kx@D_inv@ky
+    # M14=np.ones_like(M11)+kx@D_inv@kx
+    # M21=-ky@D_inv@C
+    # M22=np.zeros_like(M11)
+    # M23=-(ky@D_inv@ky+np.ones_like(M11))
+    # M24=ky@D_inv@kx
+    # M31=-kx@ky
+    # M32=kx@kx+E
+    # M33=np.zeros_like(M11)
+    # M34=np.zeros_like(M11)
+    # M41=-kx@ky-A+B@D_inv@C
+    # M42=ky@kx
+    # M43=B@D_inv@ky
+    # M44=-B@D_inv@kx
+    # M=np.block([[M11,M12,M13,M14],[M21,M22,M23,M24],[M31,M32,M33,M34],[M41,M42,M43,M44]])
+    # LAM,W=np.linalg.eig(M)
+    # Eigenvector,Eigenvalue=Calculate_Poynting(W,LAM,kx,Constant)
+    # V_g_E_P=Constant['V_g_E_P']
+    # V_g_E_N=Constant['V_g_E_N']
+    # V_g_H_P=Constant['V_g_H_P']
+    # V_g_H_N=Constant['V_g_H_N']
+    # temp1=np.block([[V_g_E_P,V_g_E_N],[V_g_H_P,V_g_H_N]])
+    # temp=np.linalg.solve(temp1,Eigenvector)
+    # half=np.shape(temp)[0]//2
+    # A=temp[:half,:half]
+    # B=temp[:half,half:]
+    # C=temp[half:,:half]
+    # D=temp[half:,half:]
+    # A_inv=np.linalg.inv(A)
+    # S11=C@A_inv
+    # S12=D-C@A_inv@B
+    # S21=A_inv
+    # S22=-A_inv@B
+    # S_trn=np.block([[S11,S12],[S21,S22]])
+    Strn,W,LAM=build_scatter_side(Constant['e2'],1,kx,ky,Constant['W'],transmission_side=True)
+    S_trn=np.block([[Strn[0],Strn[1]],[Strn[2],Strn[3]]])
     return S_trn
 
 def Compute(Constant,layers,plot=False):
@@ -202,7 +218,14 @@ def Compute(Constant,layers,plot=False):
     temp=F_series_gen(s,nDim)
     s=Toeplitz(temp,nDim)
     #############计算间隙介质的散射矩阵
-    Constant=Calculate_Gap(kx,ky,Constant)
+    LAM,W=homogeneous_isotropic_matrix(1,1,kx,ky)
+    # Constant=Calculate_Gap(kx,ky,Constant)
+    half=W.shape[0]//2
+    Constant['W']=W
+    Constant['V_g_E_P']=W[:half,:half]
+    Constant['V_g_E_N']=W[:half,half:]
+    Constant['V_g_H_P']=W[half:,:half]
+    Constant['V_g_H_N']=W[half:,half:]
     V_g_E_P=Constant['V_g_E_P']
     V_g_E_N=Constant['V_g_E_N']
     V_g_H_P=Constant['V_g_H_P']
@@ -238,7 +261,7 @@ def Compute(Constant,layers,plot=False):
         M=np.block([[M11,M12,M13,M14],[M21,M22,M23,M24],[M31,M32,M33,M34],[M41,M42,M43,M44]])
         #########计算EigenVector和Eigenvalue，并进行排序
         LAM,W=np.linalg.eig(M)
-        Eigenvector,Eigenvalue=Calculate_Poynting(W,LAM)
+        Eigenvector,Eigenvalue=Calculate_Poynting(W,LAM,kx,Constant)
         #########构造S矩阵
         temp=np.linalg.solve(Eigenvector,temp1)
         half=np.shape(temp)[0]//2
@@ -263,6 +286,7 @@ def Compute(Constant,layers,plot=False):
     S_global=Star(S_global,S_trn)
     R_effi,T_effi=calcEffi(Constant['p'],Constant,S_global)
     Plot_Effi(R_effi,T_effi,Constant)
+
 ###########################设定仿真常数################################
 thetai=np.radians(0)#入射角thetai
 phi=np.radians(0)#入射角phi
