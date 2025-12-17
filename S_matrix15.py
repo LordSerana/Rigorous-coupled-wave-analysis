@@ -141,7 +141,7 @@ def Calculate_Ref(kx,ky,layers,Constant):
     # M=np.block([[M11,M12,M13,M14],[M21,M22,M23,M24],[M31,M32,M33,M34],[M41,M42,M43,M44]])
     # LAM,W=np.linalg.eig(M)
     Sref,W,LAM=build_scatter_side(Constant['e1'],1,kx,ky,Constant['W'])
-    # Eigenvector,Eigenvalue=Calculate_Poynting(W,LAM)
+    Eigenvector,Eigenvalue=Calculate_Poynting(W,LAM)
     # V_g_E_P=Constant['V_g_E_P']
     # V_g_E_N=Constant['V_g_E_N']
     # V_g_H_P=Constant['V_g_H_P']
