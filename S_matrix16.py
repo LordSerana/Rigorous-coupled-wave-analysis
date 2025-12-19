@@ -10,67 +10,21 @@ from S_matrix.CalcEffi import calcEffi
 from S_matrix.Plot_Effi import Plot_Effi
 import matplotlib.pyplot as plt
 from S_matrix.F_series_gen import F_series_gen
-from S_matrix.Build_scatter_side import build_scatter_side
-from S_matrix.Homogeneous_isotropic_matrix import homogeneous_isotropic_matrix
+# from S_matrix.Calculate_Poynting import Calculate_Poynting
+# from S_matrix.Build_scatter_side import build_scatter_side
+# from S_matrix.Homogeneous_isotropic_matrix import homogeneous_isotropic_matrix
 
 plt.rcParams['font.sans-serif']=['SimHei']
 plt.rcParams['axes.unicode_minus']=False#解决plt画图中文乱码问题
-###验证4*4矩阵形式的正确性
-
-def Build_M_RCWA(kx, ky, E, E_recip_inv):
-    """
-    标准全矢量 RCWA 4×4 本征矩阵
-    对应 Moharam / Li 体系
-    状态向量: [Ex, Ey, Hx, Hy]^T
-    """
-
-    nDim = kx.shape[0]
-    O = np.zeros((nDim, nDim), dtype=complex)
-    I = np.eye(nDim, dtype=complex)
-
-    # --- P block（来自 curl H） ---
-    P11 = ky @ E_recip_inv @ ky - I
-    P12 = -ky @ E_recip_inv @ kx
-    P21 = -kx @ E_recip_inv @ ky
-    P22 = kx @ E_recip_inv @ kx - I
-
-    # --- 4×4 block matrix ---
-    M = np.block([
-        [ O,   O,   O,   I ],
-        [ O,   O,  -I,   O ],
-        [ P11, P12, O,   O ],
-        [ P21, P22, O,   O ]
-    ])
-
-    return M
-
-def Build_S_layer(Eigenvector, Eigenvalue, d):
-    """
-    把 RCWA 周期层的模态传播算符
-    转换为等效两端口 S 矩阵
-    """
-
-    # 模态传播（注意 i）
-    P = np.diag(np.exp(1j * Eigenvalue * d))
-
-    Z = np.zeros_like(P)
-
-    # S 矩阵：尺寸 = 4n × 4n
-    S_layer = np.block([
-        [Z, P],
-        [P, Z]
-    ])
-
-    return S_layer
 
 def layer_mode(layer,Constant):
     #计算介电常数卷积矩阵
     Nx=Constant['Nx']
     m=Constant['n_Tr']//2
-    epsilon=np.ones(Nx,dtype=complex)
+    epsilon=np.ones(Nx,dtype=complex)*layer.n**2
     temp=int(layer.fill_factor*Nx/2)
     q0=int(Nx/2)
-    epsilon[q0-temp:q0+temp+1]=layer.n**2
+    epsilon[q0-temp:q0+temp+1]=Constant['n1']**2
     epsilon_recip=1/epsilon            
     fourier_coeffi=np.fft.fftshift(np.fft.fft(epsilon,axis=0)/epsilon.shape[0])
     fourier_coeffi_recip=np.fft.fftshift(np.fft.fft(epsilon_recip,axis=0)/epsilon.shape[0])
@@ -92,7 +46,7 @@ def Calculate_Poynting(Eigenvector,Eigenvalue):
         Ey=temp[block_size:2*block_size]
         Hx=temp[2*block_size:3*block_size]
         Hy=temp[3*block_size:]
-        Sz[i]=np.real(np.vdot(Ex,Hy)-np.vdot(Ey,Hx))
+        Sz[i]=np.real(np.dot(1j*Ex,np.conj(Hy))-np.dot(1j*Ey,np.conj(Hx)))
     #首先对Poynting向量初步排序，正的排在前半，负的排在后半
     tol=1e-12
     forward=[]
@@ -103,7 +57,7 @@ def Calculate_Poynting(Eigenvector,Eigenvalue):
         elif Sz[i]<-tol:
             backward.append(i)
         else:
-            if np.imag(Eigenvalue[i])>0:
+            if np.real(Eigenvalue[i])<0:
                 forward.append(i)
             else:
                 backward.append(i)
@@ -115,11 +69,22 @@ def Calculate_Poynting(Eigenvector,Eigenvalue):
         raise ValueError(
             f"Poynting分类错误:forward={len(forward)},backward={len(backward)},应各为{half}"
         )
+    ###############内部排序
+    def sort_key(i):
+        return (abs(np.imag(Eigenvalue[i])),abs(np.real(Eigenvalue[i])))
+    forward=sorted(forward,key=sort_key,reverse=True)
+    backward=sorted(backward,key=sort_key,reverse=True)
+    ind=np.array(forward+backward,dtype=int)
+    Eigenvalue=Eigenvalue[ind]
+    Eigenvector[:,ind]
     return Eigenvector,Eigenvalue
 
-# def Calculate_Gap(kx,ky,Constant,layer):
-    E,E_recip_inv=layer_mode(layer,Constant)
-    M=Build_M_RCWA(kx,ky,E,E_recip_inv)
+def Calculate_Gap(kx,ky,Constant):
+    I=np.eye(kx.shape[0])
+    omega=np.block([[kx@ky,I+ky@ky],[-(I+kx@kx),-kx@ky]])
+    zero=np.zeros_like(omega)
+    M=np.block([[zero,omega],[omega,zero]])
+    #是否需要排序呢？
     LAM,W=np.linalg.eig(M)
     Eigenvector,Eigenvalue=Calculate_Poynting(W,LAM)
     half=np.shape(Eigenvector[0,:])[0]//2
@@ -127,21 +92,120 @@ def Calculate_Poynting(Eigenvector,Eigenvalue):
     V_g_E_N=Eigenvector[:half,half:]
     V_g_H_P=Eigenvector[half:,:half]
     V_g_H_N=Eigenvector[half:,half:]
+    # LAM,W=homogeneous_isotropic_matrix(1,1,kx,ky)
+    # W,LAM=Calculate_Poynting(W,LAM)
+    # temp=int(W.shape[0]/2)
+    # W0=W[:temp,:temp]
+    # Constant['W0']=W0
+    # Constant['W']=W
     Constant['V_g_E_P']=V_g_E_P
     Constant['V_g_E_N']=V_g_E_N
     Constant['V_g_H_P']=V_g_H_P
     Constant['V_g_H_N']=V_g_H_N
+    # Constant['V_g_E_P']=W[:temp,:temp]
+    # Constant['V_g_E_N']=W[:temp,temp:]
+    # Constant['V_g_H_P']=W[temp:,:temp]
+    # Constant['V_g_H_N']=W[temp:,temp:]
     return Constant
 
-def Calculate_Ref(Constant):
-    Sref,Wref,LAMref=build_scatter_side(Constant['n1'],1,Constant['kx'],Constant['ky'],Constant['W'])
-    Sref=np.block([[Sref[0],Sref[1]],[Sref[2],Sref[3]]])
-    return Sref
+def Calculate_Ref(kx,ky,layers,Constant):
+    E,E_recip_inv=layer_mode(layers[0],Constant)
+    nDim=Constant['n_Tr']
+    c=np.zeros((nDim,nDim))
+    s=np.eye(nDim)
+    A=c@E_recip_inv@c+s@E@s
+    B=s@E@c-c@E_recip_inv@s
+    C=c@E@s-s@E_recip_inv@c
+    D=s@E_recip_inv@s+c@E@c
+    D_inv=np.linalg.inv(D)
+    M11=-kx@D_inv@C
+    M12=np.zeros_like(M11)
+    M13=-kx@D_inv@ky
+    M14=np.ones_like(M11)+kx@D_inv@kx
+    M21=-ky@D_inv@C
+    M22=np.zeros_like(M11)
+    M23=-(ky@D_inv@ky+np.ones_like(M11))
+    M24=ky@D_inv@kx
+    M31=-kx@ky
+    M32=kx@kx+E
+    M33=np.zeros_like(M11)
+    M34=np.zeros_like(M11)
+    M41=-kx@ky-A+B@D_inv@C
+    M42=ky@kx
+    M43=B@D_inv@ky
+    M44=-B@D_inv@kx
+    M=np.block([[M11,M12,M13,M14],[M21,M22,M23,M24],[M31,M32,M33,M34],[M41,M42,M43,M44]])
+    LAM,W=np.linalg.eig(M)
+    Eigenvector,Eigenvalue=Calculate_Poynting(W,LAM)
+    V_g_E_P=Constant['V_g_E_P']
+    V_g_E_N=Constant['V_g_E_N']
+    V_g_H_P=Constant['V_g_H_P']
+    V_g_H_N=Constant['V_g_H_N']
+    temp1=np.block([[V_g_E_P,V_g_E_N],[V_g_H_P,V_g_H_N]])
+    temp=np.linalg.solve(temp1,Eigenvector)
+    half=np.shape(temp)[0]//2
+    A=temp[:half,:half]
+    B=temp[:half,half:]
+    C=temp[half:,:half]
+    D=temp[half:,half:]
+    D_inv=np.linalg.inv(D)
+    S11=-D_inv@C
+    S12=D_inv
+    S21=A-B@D_inv@C
+    S22=B@D_inv
+    S_ref=np.block([[S11,S12],[S21,S22]])
+    # Sref,W,LAM=build_scatter_side(Constant['e1'],1,kx,ky,Constant['W'])
+    # S_ref=np.block([[Sref[0],Sref[1]],[Sref[2],Sref[3]]])
+    return S_ref
 
-def Calculate_trn(Constant):
-    Strn,Wtrn,LAMtrn=build_scatter_side(Constant['n2'],1,Constant['kx'],Constant['ky'],Constant['W'],transmission_side=True)
-    Strn=np.block([[Strn[0],Strn[1]],[Strn[2],Strn[3]]])
-    return Strn
+def Calculate_trn(kx,ky,layers,Constant):
+    E,E_recip_inv=layer_mode(layers[-1],Constant)
+    c=np.zeros((Constant['n_Tr'],Constant['n_Tr']))
+    s=np.eye((Constant['n_Tr']))
+    A=c@E_recip_inv@c+s@E@s
+    B=s@E@c-c@E_recip_inv@s
+    C=c@E@s-s@E_recip_inv@c
+    D=s@E_recip_inv@s+c@E@c
+    D_inv=np.linalg.inv(D)
+    M11=-kx@D_inv@C
+    M12=np.zeros_like(M11)
+    M13=-kx@D_inv@ky
+    M14=np.ones_like(M11)+kx@D_inv@kx
+    M21=-ky@D_inv@C
+    M22=np.zeros_like(M11)
+    M23=-(ky@D_inv@ky+np.ones_like(M11))
+    M24=ky@D_inv@kx
+    M31=-kx@ky
+    M32=kx@kx+E
+    M33=np.zeros_like(M11)
+    M34=np.zeros_like(M11)
+    M41=-kx@ky-A+B@D_inv@C
+    M42=ky@kx
+    M43=B@D_inv@ky
+    M44=-B@D_inv@kx
+    M=np.block([[M11,M12,M13,M14],[M21,M22,M23,M24],[M31,M32,M33,M34],[M41,M42,M43,M44]])
+    LAM,W=np.linalg.eig(M)
+    Eigenvector,Eigenvalue=Calculate_Poynting(W,LAM)
+    V_g_E_P=Constant['V_g_E_P']
+    V_g_E_N=Constant['V_g_E_N']
+    V_g_H_P=Constant['V_g_H_P']
+    V_g_H_N=Constant['V_g_H_N']
+    temp1=np.block([[V_g_E_P,V_g_E_N],[V_g_H_P,V_g_H_N]])
+    temp=np.linalg.solve(temp1,Eigenvector)
+    half=np.shape(temp)[0]//2
+    A=temp[:half,:half]
+    B=temp[:half,half:]
+    C=temp[half:,:half]
+    D=temp[half:,half:]
+    A_inv=np.linalg.inv(A)
+    S11=C@A_inv
+    S12=D-C@A_inv@B
+    S21=A_inv
+    S22=-A_inv@B
+    S_trn=np.block([[S11,S12],[S21,S22]])
+    # Strn,W,LAM=build_scatter_side(Constant['e2'],1,kx,ky,Constant['W'],transmission_side=True)
+    # S_trn=np.block([[Strn[0],Strn[1]],[Strn[2],Strn[3]]])
+    return S_trn
 
 def Compute(Constant,layers,plot=False):
     kinc=Constant['kinc']
@@ -164,35 +228,82 @@ def Compute(Constant,layers,plot=False):
     Constant['kzref']=-kzref
     nDim=Constant['n_Tr']
     ###构造M矩阵
-    LAM,W=homogeneous_isotropic_matrix(1,1,kx,ky)
-    temp=int(W.shape[0]/2)
-    W0=W[:temp,:temp]
-    Constant['W0']=W0
-    Constant['W']=W
-    V_g_E_P=W[:temp,:temp]
-    V_g_E_N=W[:temp,temp:]
-    V_g_H_P=W[temp:,:temp]
-    V_g_H_N=W[temp:,temp:]
+    x=np.linspace(0,Constant['period'],2**10)
+    temp=Constant['diff_a']
+    diff_a=temp(x)
+    c=diff_a/np.sqrt(1+diff_a*diff_a,dtype=complex)#遗漏了一步傅里叶变换
+    temp=F_series_gen(c,nDim)
+    c=Toeplitz(temp,nDim)
+    s=1/np.sqrt(1+diff_a*diff_a,dtype=complex)
+    temp=F_series_gen(s,nDim)
+    s=Toeplitz(temp,nDim)
+    #############计算间隙介质的散射矩阵
+    # LAM,W=homogeneous_isotropic_matrix(1,1,kx,ky)
+    # W,LAM=Calculate_Poynting(W,LAM)
+    Constant=Calculate_Gap(kx,ky,Constant)
+    # half=W.shape[0]//2
+    # Constant['W']=W
+    # Constant['V_g_E_P']=W[:half,:half]
+    # Constant['V_g_E_N']=W[:half,half:]
+    # Constant['V_g_H_P']=W[half:,:half]
+    # Constant['V_g_H_N']=W[half:,half:]
+    V_g_E_P=Constant['V_g_E_P']
+    V_g_E_N=Constant['V_g_E_N']
+    V_g_H_P=Constant['V_g_H_P']
+    V_g_H_N=Constant['V_g_H_N']
     temp1=np.block([[V_g_E_P,V_g_E_N],[V_g_H_P,V_g_H_N]])#Gap_medium的散射矩阵
     zero=np.zeros((2*nDim,2*nDim))
     S_global=np.block([[zero,np.eye(2*nDim)],[np.eye(2*nDim),zero]])
-    S_ref=Calculate_Ref(Constant)
+    S_ref=Calculate_Ref(kx,ky,layers,Constant)
     S_global=Star(S_global,S_ref)
     for i in layers[1:-1]:
         E,E_recip_inv=layer_mode(i,Constant)
-        M=Build_M_RCWA(kx,ky,E,E_recip_inv)
+        A=c@E_recip_inv@c+s@E@s
+        B=s@E@c-c@E_recip_inv@s
+        C=c@E@s-s@E_recip_inv@c
+        D=s@E_recip_inv@s+c@E@c
+        D_inv=np.linalg.inv(D)
+        M11=-kx@D_inv@C
+        M12=np.zeros_like(M11)
+        M13=-kx@D_inv@ky
+        M14=np.ones_like(M11)+kx@D_inv@kx
+        M21=-ky@D_inv@C
+        M22=np.zeros_like(M11)
+        M23=-(ky@D_inv@ky+np.ones_like(M11))
+        M24=ky@D_inv@kx
+        M31=-kx@ky
+        M32=kx@kx+E
+        M33=np.zeros_like(M11)
+        M34=np.zeros_like(M11)
+        M41=-kx@ky-A+B@D_inv@C
+        M42=ky@kx
+        M43=B@D_inv@ky
+        M44=-B@D_inv@kx
+        M=np.block([[M11,M12,M13,M14],[M21,M22,M23,M24],[M31,M32,M33,M34],[M41,M42,M43,M44]])
         #########计算EigenVector和Eigenvalue，并进行排序
         LAM,W=np.linalg.eig(M)
         Eigenvector,Eigenvalue=Calculate_Poynting(W,LAM)
-        # Eigenvector=W
-        # Eigenvalue=LAM
         #########构造S矩阵
-        Prop=Build_S_layer(Eigenvector,Eigenvalue,Constant['depth'])
-        Z=np.zeros_like(Prop)
-        I=np.eye(Prop.shape[0])
-        S_layer=np.block([[Z,Prop],[Prop,Z]])
-        S_global=Star(S_global,S_layer)
-    S_trn=Calculate_trn(Constant)
+        temp=np.linalg.solve(Eigenvector,temp1)
+        half=np.shape(temp)[0]//2
+        A=temp[:half,:half]
+        B=temp[:half,half:]
+        C=temp[half:,:half]
+        D=temp[half:,half:]
+        A_inv=np.linalg.inv(A)
+        D_inv=np.linalg.inv(D)
+        half=np.shape(Eigenvalue)[0]//2
+        X_P=np.diag(np.exp(Eigenvalue[:half]*Constant['k0']*Constant['depth']))
+        X_N=np.diag(np.exp(-Eigenvalue[half:]*Constant['k0']*Constant['depth']))
+        S11=np.linalg.solve(D-X_N@C@A_inv@X_P@B,X_N@C@A_inv@X_P@A-C)
+        temp=X_N@(D-C@A_inv@B)
+        S12=np.linalg.solve(D-X_N@C@A_inv@X_P@B,temp)
+        temp=X_P@(A-B@D_inv@C)
+        S21=np.linalg.solve(A-X_P@B@D_inv@X_N@C,temp)
+        S22=np.linalg.solve(A-X_P@B@D_inv@X_N@C,X_P@B@D_inv@X_N@D-B)
+        S=np.block([[S11,S12],[S21,S22]])
+        S_global=Star(S_global,S)
+    S_trn=Calculate_trn(kx,ky,layers,Constant)
     S_global=Star(S_global,S_trn)
     R_effi,T_effi=calcEffi(Constant['p'],Constant,S_global)
     Plot_Effi(R_effi,T_effi,Constant)
