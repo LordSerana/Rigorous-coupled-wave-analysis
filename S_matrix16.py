@@ -11,7 +11,7 @@ from S_matrix.Plot_Effi import Plot_Effi
 import matplotlib.pyplot as plt
 from S_matrix.F_series_gen import F_series_gen
 # from S_matrix.Calculate_Poynting import Calculate_Poynting
-# from S_matrix.Build_scatter_side import build_scatter_side
+from S_matrix.Build_scatter_side import build_scatter_side
 # from S_matrix.Homogeneous_isotropic_matrix import homogeneous_isotropic_matrix
 
 plt.rcParams['font.sans-serif']=['SimHei']
@@ -69,39 +69,46 @@ def Calculate_Poynting(Eigenvector,Eigenvalue):
         raise ValueError(
             f"Poynting分类错误:forward={len(forward)},backward={len(backward)},应各为{half}"
         )
-    ###############内部排序
-    def sort_key(i):
-        return (abs(np.imag(Eigenvalue[i])),abs(np.real(Eigenvalue[i])))
-    forward=sorted(forward,key=sort_key,reverse=True)
-    backward=sorted(backward,key=sort_key,reverse=True)
-    ind=np.array(forward+backward,dtype=int)
-    Eigenvalue=Eigenvalue[ind]
-    Eigenvector[:,ind]
+    ###############内部排序,按照虚部的降序排序
+    half=Eigenvalue.shape[0]//2
+    forward=np.argsort(-Eigenvalue[:half].imag)
+    backward=np.argsort(-abs(Eigenvalue[half:].imag))+half
+    new_ind=np.concatenate([forward,backward])
+    Eigenvalue=Eigenvalue[new_ind]
+    Eigenvalue[forward]=-abs(Eigenvalue[forward].real)+1j*abs(Eigenvalue[forward].imag)
+    Eigenvalue[backward]=abs(Eigenvalue[backward].real)-1j*abs(Eigenvalue[backward].imag)
+    Eigenvector=Eigenvector[:,new_ind]
     return Eigenvector,Eigenvalue
 
 def Calculate_Gap(kx,ky,Constant):
     I=np.eye(kx.shape[0])
-    omega=np.block([[kx@ky,I+ky@ky],[-(I+kx@kx),-kx@ky]])
-    zero=np.zeros_like(omega)
-    M=np.block([[zero,omega],[omega,zero]])
+    W=np.eye(2*kx.shape[0])
+    omega=np.block([[kx@ky,I+ky@ky],[-(I+kx@kx),-kx@ky]])#到底用1还是I？
+    V=-1j*omega
+    LAM=-1j*Constant['kzref']
+    LAM=np.concatenate([LAM,LAM])
+    Eigenvalue=np.concatenate([LAM,-LAM])
+    Eigenvector=np.block([[W,W],[V,-V]])
+    # zero=np.zeros_like(omega)
+    # M=np.block([[zero,omega],[omega,zero]])
     #是否需要排序呢？
-    LAM,W=np.linalg.eig(M)
-    Eigenvector,Eigenvalue=Calculate_Poynting(W,LAM)
+    # LAM,W=np.linalg.eig(M)
+    # Eigenvector,Eigenvalue=Calculate_Poynting(Eigenvector,Eigenvalue)
     half=np.shape(Eigenvector[0,:])[0]//2
     V_g_E_P=Eigenvector[:half,:half]
     V_g_E_N=Eigenvector[:half,half:]
     V_g_H_P=Eigenvector[half:,:half]
     V_g_H_N=Eigenvector[half:,half:]
+    Constant['V_g_E_P']=V_g_E_P
+    Constant['V_g_E_N']=V_g_E_N
+    Constant['V_g_H_P']=V_g_H_P
+    Constant['V_g_H_N']=V_g_H_N
     # LAM,W=homogeneous_isotropic_matrix(1,1,kx,ky)
     # W,LAM=Calculate_Poynting(W,LAM)
     # temp=int(W.shape[0]/2)
     # W0=W[:temp,:temp]
     # Constant['W0']=W0
     # Constant['W']=W
-    Constant['V_g_E_P']=V_g_E_P
-    Constant['V_g_E_N']=V_g_E_N
-    Constant['V_g_H_P']=V_g_H_P
-    Constant['V_g_H_N']=V_g_H_N
     # Constant['V_g_E_P']=W[:temp,:temp]
     # Constant['V_g_E_N']=W[:temp,temp:]
     # Constant['V_g_H_P']=W[temp:,:temp]
@@ -109,6 +116,7 @@ def Calculate_Gap(kx,ky,Constant):
     return Constant
 
 def Calculate_Ref(kx,ky,layers,Constant):
+    #按计划，使用解析式替代矩阵计算，如Calculate_Gap所做的那样
     E,E_recip_inv=layer_mode(layers[0],Constant)
     nDim=Constant['n_Tr']
     c=np.zeros((nDim,nDim))
@@ -204,6 +212,7 @@ def Calculate_trn(kx,ky,layers,Constant):
     S22=-A_inv@B
     S_trn=np.block([[S11,S12],[S21,S22]])
     # Strn,W,LAM=build_scatter_side(Constant['e2'],1,kx,ky,Constant['W'],transmission_side=True)
+    # W,LAM=Calculate_Poynting(W,LAM)
     # S_trn=np.block([[Strn[0],Strn[1]],[Strn[2],Strn[3]]])
     return S_trn
 
@@ -240,13 +249,13 @@ def Compute(Constant,layers,plot=False):
     #############计算间隙介质的散射矩阵
     # LAM,W=homogeneous_isotropic_matrix(1,1,kx,ky)
     # W,LAM=Calculate_Poynting(W,LAM)
-    Constant=Calculate_Gap(kx,ky,Constant)
     # half=W.shape[0]//2
     # Constant['W']=W
     # Constant['V_g_E_P']=W[:half,:half]
     # Constant['V_g_E_N']=W[:half,half:]
     # Constant['V_g_H_P']=W[half:,:half]
     # Constant['V_g_H_N']=W[half:,half:]
+    Constant=Calculate_Gap(kx,ky,Constant)
     V_g_E_P=Constant['V_g_E_P']
     V_g_E_N=Constant['V_g_E_N']
     V_g_H_P=Constant['V_g_H_P']
@@ -342,7 +351,7 @@ Constant['diff_a']=a_diff
 Constant['depth']=Constant['period']/2*np.tan(np.radians(30))
 #####################################################################
 layers=[
-    Layer(n=1,t=1*1e-6),
+    Layer(n=1+0.001j,t=1*1e-6),
     Layer(n=1.4482+7.5367j,t=1.8*1e-6,fill_factor=1),
     Layer(n=1.4482+7.5367j,t=4*1e-6)
     ]
