@@ -21,10 +21,10 @@ def layer_mode(layer,Constant):
     #计算介电常数卷积矩阵
     Nx=Constant['Nx']
     m=Constant['n_Tr']//2
-    epsilon=np.ones(Nx,dtype=complex)*layer.n**2
+    epsilon=np.ones(Nx,dtype=complex)*Constant['e1']
     temp=int(layer.fill_factor*Nx/2)
     q0=int(Nx/2)
-    epsilon[q0-temp:q0+temp+1]=Constant['n1']**2
+    epsilon[q0-temp:q0+temp+1]=layer.n**2
     epsilon_recip=1/epsilon            
     fourier_coeffi=np.fft.fftshift(np.fft.fft(epsilon,axis=0)/epsilon.shape[0])
     fourier_coeffi_recip=np.fft.fftshift(np.fft.fft(epsilon_recip,axis=0)/epsilon.shape[0])
@@ -130,67 +130,23 @@ def Calculate_Ref(kx,ky,layers,Constant):
     LAM=np.concatenate([LAM,LAM])
     Eigenvalue=np.concatenate([LAM,-LAM])
     Eigenvector=np.block([[W,W],[V,-V]])
-    # Eigenvector,Eigenvalue=Calculate_Poynting(Eigenvector,Eigenvalue)
-    # E,E_recip_inv=layer_mode(layers[0],Constant)
-    # nDim=Constant['n_Tr']
-    # c=np.zeros((nDim,nDim))
-    # s=np.eye(nDim)
-    # A=c@E_recip_inv@c+s@E@s
-    # B=s@E@c-c@E_recip_inv@s
-    # C=c@E@s-s@E_recip_inv@c
-    # D=s@E_recip_inv@s+c@E@c
-    # D_inv=np.linalg.inv(D)
-    # M11=-kx@D_inv@C
-    # M12=np.zeros_like(M11)
-    # M13=-kx@D_inv@ky
-    # M14=np.ones_like(M11)+kx@D_inv@kx
-    # M21=-ky@D_inv@C
-    # M22=np.zeros_like(M11)
-    # M23=-(ky@D_inv@ky+np.ones_like(M11))
-    # M24=ky@D_inv@kx
-    # M31=-kx@ky
-    # M32=kx@kx+E
-    # M33=np.zeros_like(M11)
-    # M34=np.zeros_like(M11)
-    # M41=-kx@ky-A+B@D_inv@C
-    # M42=ky@kx
-    # M43=B@D_inv@ky
-    # M44=-B@D_inv@kx
-    # M=np.block([[M11,M12,M13,M14],[M21,M22,M23,M24],[M31,M32,M33,M34],[M41,M42,M43,M44]])
-    # LAM,W=np.linalg.eig(M)
-    # Eigenvector,Eigenvalue=Calculate_Poynting(W,LAM)
-    # V_g_E_P=Constant['V_g_E_P']
-    # V_g_E_N=Constant['V_g_E_N']
-    # V_g_H_P=Constant['V_g_H_P']
-    # V_g_H_N=Constant['V_g_H_N']
-    # temp1=np.block([[V_g_E_P,V_g_E_N],[V_g_H_P,V_g_H_N]])
-    # temp=np.linalg.solve(temp1,Eigenvector)
-    # half=np.shape(temp)[0]//2
-    # A=temp[:half,:half]
-    # B=temp[:half,half:]
-    # C=temp[half:,:half]
-    # D=temp[half:,half:]
-    # D_inv=np.linalg.inv(D)
-    # S11=-D_inv@C
-    # S12=D_inv
-    # S21=A-B@D_inv@C
-    # S22=B@D_inv
-    Wref=W
-    Vref=V
-    W0=Constant['W0']
-    W0_inv=np.linalg.inv(W0)
-    V0=Constant['V0']
-    V0_inv=np.linalg.inv(V0)
-    A=W0_inv@Wref+V0_inv@Vref
-    A_inv=np.linalg.inv(A)
-    B=W0_inv@Wref-V0_inv@Vref
-    S11=-A_inv@B
-    S12=2*A_inv
-    S21=0.5*(A-B@A_inv@B)
-    S22=B@A_inv
+    V_g_E_P=Constant['V_g_E_P']
+    V_g_E_N=Constant['V_g_E_N']
+    V_g_H_P=Constant['V_g_H_P']
+    V_g_H_N=Constant['V_g_H_N']
+    temp1=np.block([[V_g_E_P,V_g_E_N],[V_g_H_P,V_g_H_N]])
+    temp=np.linalg.solve(temp1,Eigenvector)
+    half=np.shape(temp)[0]//2
+    A=temp[:half,:half]
+    B=temp[:half,half:]
+    C=temp[half:,:half]
+    D=temp[half:,half:]
+    D_inv=np.linalg.inv(D)
+    S11=-D_inv@C
+    S12=D_inv
+    S21=A-B@D_inv@C
+    S22=B@D_inv
     S_ref=np.block([[S11,S12],[S21,S22]])
-    # Sref,W,LAM=build_scatter_side(Constant['e1'],1,kx,ky,Constant['W'])
-    # S_ref=np.block([[Sref[0],Sref[1]],[Sref[2],Sref[3]]])
     return S_ref
 
 def Calculate_trn(kx,ky,layers,Constant):
@@ -206,66 +162,23 @@ def Calculate_trn(kx,ky,layers,Constant):
     V=omega@np.linalg.inv(np.diag(LAM))
     Eigenvalue=np.concatenate([LAM,-LAM])
     Eigenvector=np.block([[W,W],[V,-V]])
-    # E,E_recip_inv=layer_mode(layers[-1],Constant)
-    # c=np.zeros((Constant['n_Tr'],Constant['n_Tr']))
-    # s=np.eye((Constant['n_Tr']))
-    # A=c@E_recip_inv@c+s@E@s
-    # B=s@E@c-c@E_recip_inv@s
-    # C=c@E@s-s@E_recip_inv@c
-    # D=s@E_recip_inv@s+c@E@c
-    # D_inv=np.linalg.inv(D)
-    # M11=-kx@D_inv@C
-    # M12=np.zeros_like(M11)
-    # M13=-kx@D_inv@ky
-    # M14=np.ones_like(M11)+kx@D_inv@kx
-    # M21=-ky@D_inv@C
-    # M22=np.zeros_like(M11)
-    # M23=-(ky@D_inv@ky+np.ones_like(M11))
-    # M24=ky@D_inv@kx
-    # M31=-kx@ky
-    # M32=kx@kx+E
-    # M33=np.zeros_like(M11)
-    # M34=np.zeros_like(M11)
-    # M41=-kx@ky-A+B@D_inv@C
-    # M42=ky@kx
-    # M43=B@D_inv@ky
-    # M44=-B@D_inv@kx
-    # M=np.block([[M11,M12,M13,M14],[M21,M22,M23,M24],[M31,M32,M33,M34],[M41,M42,M43,M44]])
-    # LAM,W=np.linalg.eig(M)
-    # Eigenvector,Eigenvalue=Calculate_Poynting(W,LAM)
-    # V_g_E_P=Constant['V_g_E_P']
-    # V_g_E_N=Constant['V_g_E_N']
-    # V_g_H_P=Constant['V_g_H_P']
-    # V_g_H_N=Constant['V_g_H_N']
-    # temp1=np.block([[V_g_E_P,V_g_E_N],[V_g_H_P,V_g_H_N]])
-    # temp=np.linalg.solve(temp1,Eigenvector)
-    # half=np.shape(temp)[0]//2
-    # A=temp[:half,:half]
-    # B=temp[:half,half:]
-    # C=temp[half:,:half]
-    # D=temp[half:,half:]
-    # A_inv=np.linalg.inv(A)
-    # S11=C@A_inv
-    # S12=D-C@A_inv@B
-    # S21=A_inv
-    # S22=-A_inv@B
-    W0=Constant['W0']
-    W0_inv=np.linalg.inv(W0)
-    V0=Constant['V0']
-    V0_inv=np.linalg.inv(V0)
-    Wtrn=W
-    Vtrn=V
-    A=W0_inv@Wtrn+V0_inv@Vtrn
+    V_g_E_P=Constant['V_g_E_P']
+    V_g_E_N=Constant['V_g_E_N']
+    V_g_H_P=Constant['V_g_H_P']
+    V_g_H_N=Constant['V_g_H_N']
+    temp1=np.block([[V_g_E_P,V_g_E_N],[V_g_H_P,V_g_H_N]])
+    temp=np.linalg.solve(temp1,Eigenvector)
+    half=np.shape(temp)[0]//2
+    A=temp[:half,:half]
+    B=temp[:half,half:]
+    C=temp[half:,:half]
+    D=temp[half:,half:]
     A_inv=np.linalg.inv(A)
-    B=W0_inv@Wtrn-V0_inv@Vtrn
-    S11=B@A_inv
-    S12=0.5*(A-B@A_inv@B)
-    S21=2*A_inv
+    S11=C@A_inv
+    S12=D-C@A_inv@B
+    S21=A_inv
     S22=-A_inv@B
     S_trn=np.block([[S11,S12],[S21,S22]])
-    # Strn,W,LAM=build_scatter_side(Constant['e2'],1,kx,ky,Constant['W'],transmission_side=True)
-    # W,LAM=Calculate_Poynting(W,LAM)
-    # S_trn=np.block([[Strn[0],Strn[1]],[Strn[2],Strn[3]]])
     return S_trn
 
 def Compute(Constant,layers,plot=False):
@@ -299,14 +212,6 @@ def Compute(Constant,layers,plot=False):
     temp=F_series_gen(s,nDim)
     s=Toeplitz(temp,nDim)
     #############计算间隙介质的散射矩阵
-    # LAM,W=homogeneous_isotropic_matrix(1,1,kx,ky)
-    # W,LAM=Calculate_Poynting(W,LAM)
-    # half=W.shape[0]//2
-    # Constant['W']=W
-    # Constant['V_g_E_P']=W[:half,:half]
-    # Constant['V_g_E_N']=W[:half,half:]
-    # Constant['V_g_H_P']=W[half:,:half]
-    # Constant['V_g_H_N']=W[half:,half:]
     Constant=Calculate_Gap(kx,ky,Constant)
     V_g_E_P=Constant['V_g_E_P']
     V_g_E_N=Constant['V_g_E_N']
@@ -405,7 +310,7 @@ Constant['depth']=Constant['period']/2*np.tan(np.radians(30))
 #####################################################################
 layers=[
     Layer(n=1,t=1*1e-6),
-    Layer(n=1.4482+7.5367j,t=1.8*1e-6,fill_factor=1),
+    Layer(n=1.4482+7.5367j,t=1.8*1e-6,fill_factor=0.5),
     Layer(n=1.4482+7.5367j,t=4*1e-6)
     ]
 Compute(Constant,layers)
