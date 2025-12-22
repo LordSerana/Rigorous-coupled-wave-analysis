@@ -181,8 +181,54 @@ def Slice(n,layers,Constant):
     layer_new.append(layer_last)
     return layer_new
 
-def Construct_M_matrix():
-    pass
+def Construct_M_matrix(layer,Constant):
+    kx=Constant['kx']
+    ky=Constant['ky']
+    Nx=2**10
+    x=np.linspace(0,Constant['period'],Nx)
+    dx=Constant['period']/Nx
+    a=Constant['a'](x)
+    q0=Nx//2
+    for i in range(Nx):
+        if abs(i-q0)>=(Nx*layer.fill_factor//2):
+            a[i]=0
+        else:
+            pass
+    ######根据a数组,求a数组的导数
+    temp1=a[:-1]
+    temp2=a[1:]
+    a_diff=(temp2-temp1)/dx
+    c=a_diff/np.sqrt(1+a_diff*a_diff,dtype=complex)
+    temp=F_series_gen(c,Constant['n_Tr'])
+    c=Toeplitz(temp,Constant['n_Tr'])
+    s=1/np.sqrt(1+a_diff*a_diff,dtype=complex)
+    temp=F_series_gen(s,Constant['n_Tr'])
+    s=Toeplitz(temp,Constant['n_Tr'])
+    E,E_recip_inv=layer_mode(layer,Constant)
+    A=c@E_recip_inv@c+s@E@s
+    B=s@E@c-c@E_recip_inv@s
+    C=c@E@s-s@E_recip_inv@c
+    D=s@E_recip_inv@s+c@E@c
+    D_inv=np.linalg.inv(D)
+    I=np.eye(kx.shape[0])
+    M11=-kx@D_inv@C
+    M12=np.zeros_like(M11)
+    M13=-kx@D_inv@ky
+    M14=I+kx@D_inv@kx
+    M21=-ky@D_inv@C
+    M22=np.zeros_like(M11)
+    M23=-(ky@D_inv@ky+I)
+    M24=ky@D_inv@kx
+    M31=-kx@ky
+    M32=kx@kx+E
+    M33=np.zeros_like(M11)
+    M34=np.zeros_like(M11)
+    M41=-kx@ky-A+B@D_inv@C
+    M42=ky@kx
+    M43=B@D_inv@ky
+    M44=-B@D_inv@kx
+    M=np.block([[M11,M12,M13,M14],[M21,M22,M23,M24],[M31,M32,M33,M34],[M41,M42,M43,M44]])
+    return M
 
 def Compute(Constant,layers,plot=False):
     ############前期计算的准备工作##############
@@ -215,43 +261,12 @@ def Compute(Constant,layers,plot=False):
     ##############构建全局散射矩阵#############
     zero=np.zeros((2*nDim,2*nDim))
     S_global=np.block([[zero,np.eye(2*nDim)],[np.eye(2*nDim),zero]])
-    ############构造4*4M矩阵####################
-    x=np.linspace(0,Constant['period'],2**10)
-    temp=Constant['diff_a']
-    diff_a=temp(x)
-    c=diff_a/np.sqrt(1+diff_a*diff_a,dtype=complex)#遗漏了一步傅里叶变换
-    temp=F_series_gen(c,nDim)
-    c=Toeplitz(temp,nDim)
-    s=1/np.sqrt(1+diff_a*diff_a,dtype=complex)
-    temp=F_series_gen(s,nDim)
-    s=Toeplitz(temp,nDim)
     S_ref=Calculate_Ref(kx,ky,layers,Constant)
     S_global=Star(S_global,S_ref)
+    ############构造4*4M矩阵####################
+    layers=Slice(10,layers,Constant)#光栅区域切片操作
     for i in layers[1:-1]:
-        E,E_recip_inv=layer_mode(i,Constant)
-        A=c@E_recip_inv@c+s@E@s
-        B=s@E@c-c@E_recip_inv@s
-        C=c@E@s-s@E_recip_inv@c
-        D=s@E_recip_inv@s+c@E@c
-        D_inv=np.linalg.inv(D)
-        I=np.eye(kx.shape[0])
-        M11=-kx@D_inv@C
-        M12=np.zeros_like(M11)
-        M13=-kx@D_inv@ky
-        M14=I+kx@D_inv@kx
-        M21=-ky@D_inv@C
-        M22=np.zeros_like(M11)
-        M23=-(ky@D_inv@ky+I)
-        M24=ky@D_inv@kx
-        M31=-kx@ky
-        M32=kx@kx+E
-        M33=np.zeros_like(M11)
-        M34=np.zeros_like(M11)
-        M41=-kx@ky-A+B@D_inv@C
-        M42=ky@kx
-        M43=B@D_inv@ky
-        M44=-B@D_inv@kx
-        M=np.block([[M11,M12,M13,M14],[M21,M22,M23,M24],[M31,M32,M33,M34],[M41,M42,M43,M44]])
+        M=Construct_M_matrix(i,Constant)
         #########计算EigenVector和Eigenvalue，并进行排序
         LAM,W=np.linalg.eig(M)
         Eigenvector,Eigenvalue=Calculate_Poynting(W,LAM)
@@ -283,7 +298,7 @@ def Compute(Constant,layers,plot=False):
 ######################设定仿真层#####################################
 layers=[
     Layer(n=1,t=1*1e-6),#光栅上方的自由空间,可以理解为空气层
-    Layer(n=1.4482+7.5367j,t=1.8*1e-6,fill_factor=0.5),#光栅层
+    Layer(n=1.4482+7.5367j,t=1.8*1e-6,fill_factor=1),#光栅层
     Layer(n=1.4482+7.5367j,t=4*1e-6)#光栅基底区域
     ]
 Constant={}
