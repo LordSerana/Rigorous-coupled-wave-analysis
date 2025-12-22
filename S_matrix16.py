@@ -10,9 +10,6 @@ from S_matrix.CalcEffi import calcEffi
 from S_matrix.Plot_Effi import Plot_Effi
 import matplotlib.pyplot as plt
 from S_matrix.F_series_gen import F_series_gen
-# from S_matrix.Calculate_Poynting import Calculate_Poynting
-from S_matrix.Build_scatter_side import build_scatter_side
-# from S_matrix.Homogeneous_isotropic_matrix import homogeneous_isotropic_matrix
 
 plt.rcParams['font.sans-serif']=['SimHei']
 plt.rcParams['axes.unicode_minus']=False#解决plt画图中文乱码问题
@@ -181,7 +178,26 @@ def Calculate_trn(kx,ky,layers,Constant):
     S_trn=np.block([[S11,S12],[S21,S22]])
     return S_trn
 
+def Slice(n,layers,Constant):
+    '''
+    n:切片数
+    layers:传进仿真层,对中间层进行切片,并返回新的layers函数
+    '''
+    origin_FillFactor=layers[1].fill_factor
+    depth=Constant['depth']/n#切片层的平均厚度
+    layer0=layers[0]
+    layer_last=layers[-1]
+    layer_new=[]
+    layer_new.append(layer0)
+    for i in range(n):
+        fill_factor=(i+1)/n*origin_FillFactor
+        layer=Layer(n=Constant['n2'],t=depth,fill_factor=fill_factor)
+        layer_new.append(layer)
+    layer_new.append(layer_last)
+    return layer_new
+
 def Compute(Constant,layers,plot=False):
+    ############前期计算的准备工作##############
     kinc=Constant['kinc']
     kx=np.diag(kinc[0]-2*np.pi*Constant['mx']/Constant['k0']/Constant['period'])#已经归一化
     Constant['kx']=kx
@@ -201,7 +217,17 @@ def Compute(Constant,layers,plot=False):
         kzref[i,i]=kz
     Constant['kzref']=-kzref
     nDim=Constant['n_Tr']
-    ###构造M矩阵
+    #############计算间隙介质的散射矩阵##########
+    Constant=Calculate_Gap(kx,ky,Constant)
+    V_g_E_P=Constant['V_g_E_P']
+    V_g_E_N=Constant['V_g_E_N']
+    V_g_H_P=Constant['V_g_H_P']
+    V_g_H_N=Constant['V_g_H_N']
+    temp1=np.block([[V_g_E_P,V_g_E_N],[V_g_H_P,V_g_H_N]])#Gap_medium的散射矩阵
+    ##############构建全局散射矩阵#############
+    zero=np.zeros((2*nDim,2*nDim))
+    S_global=np.block([[zero,np.eye(2*nDim)],[np.eye(2*nDim),zero]])
+    ############构造4*4M矩阵####################
     x=np.linspace(0,Constant['period'],2**10)
     temp=Constant['diff_a']
     diff_a=temp(x)
@@ -211,15 +237,6 @@ def Compute(Constant,layers,plot=False):
     s=1/np.sqrt(1+diff_a*diff_a,dtype=complex)
     temp=F_series_gen(s,nDim)
     s=Toeplitz(temp,nDim)
-    #############计算间隙介质的散射矩阵
-    Constant=Calculate_Gap(kx,ky,Constant)
-    V_g_E_P=Constant['V_g_E_P']
-    V_g_E_N=Constant['V_g_E_N']
-    V_g_H_P=Constant['V_g_H_P']
-    V_g_H_N=Constant['V_g_H_N']
-    temp1=np.block([[V_g_E_P,V_g_E_N],[V_g_H_P,V_g_H_N]])#Gap_medium的散射矩阵
-    zero=np.zeros((2*nDim,2*nDim))
-    S_global=np.block([[zero,np.eye(2*nDim)],[np.eye(2*nDim),zero]])
     S_ref=Calculate_Ref(kx,ky,layers,Constant)
     S_global=Star(S_global,S_ref)
     for i in layers[1:-1]:
@@ -275,24 +292,29 @@ def Compute(Constant,layers,plot=False):
     R_effi,T_effi=calcEffi(Constant['p'],Constant,S_global)
     Plot_Effi(R_effi,T_effi,Constant)
 
+######################设定仿真层#####################################
+layers=[
+    Layer(n=1,t=1*1e-6),#光栅上方的自由空间,可以理解为空气层
+    Layer(n=1.4482+7.5367j,t=1.8*1e-6,fill_factor=0.5),#光栅层
+    Layer(n=1.4482+7.5367j,t=4*1e-6)#光栅基底区域
+    ]
+Constant={}
+Constant['n1']=layers[0].n
+Constant['e1']=Constant['n1']**2
+Constant['n2']=layers[-1].n
+Constant['e2']=Constant['n2']**2
 ###########################设定仿真常数################################
 thetai=np.radians(0)#入射角thetai
 phi=np.radians(0)#入射角phi
 wavelength=632.8*1e-9
-n1=1
-n2=1.4482+7.5367j
 pTM=0
 pTE=1
-Constant=Set_Polarization(thetai,phi,wavelength,n1,pTM,pTE)
+Constant=Set_Polarization(thetai,phi,wavelength,pTM,pTE,Constant)
 m=15
 Constant['n_Tr']=2*m+1
 Constant['mx']=np.arange(-(Constant['n_Tr']//2),Constant['n_Tr']//2+1)
 Constant['my']=np.arange(-(Constant['n_Tr']//2),Constant['n_Tr']//2+1)
-Constant['period']=4*1e-6
 Constant['Nx']=2**10
-Constant['n2']=n2
-Constant['e1']=Constant['n1']**2
-Constant['e2']=Constant['n2']**2
 Constant['c']=299792458
 Constant['omiga']=2*np.pi*Constant['c']/Constant['wavelength']
 Constant['accuracy']=1e-9
@@ -302,15 +324,11 @@ Abs_error=[]
 Rela_error=[]
 #####################设定光栅参数#####################################
 grating=Triangular(4*1e-6,30,1)
+Constant['period']=grating.T
 a,a_diff=grating.profile()
 Constant['dimension']=1#光栅是一维光栅
-Constant['a']=a
-Constant['diff_a']=a_diff
+Constant['a']=a#光栅轮廓函数
+Constant['diff_a']=a_diff#光栅表面轮廓的导数函数
 Constant['depth']=Constant['period']/2*np.tan(np.radians(30))
-#####################################################################
-layers=[
-    Layer(n=1,t=1*1e-6),
-    Layer(n=1.4482+7.5367j,t=1.8*1e-6,fill_factor=0.5),
-    Layer(n=1.4482+7.5367j,t=4*1e-6)
-    ]
+#####################开始计算########################################
 Compute(Constant,layers)
