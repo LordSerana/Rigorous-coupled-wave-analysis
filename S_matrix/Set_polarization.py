@@ -1,12 +1,15 @@
 import numpy as np
 
-def Set_Polarization(thetai,phi,wavelength,n1,pTM,pTE):
-    Constant={'thetai':thetai,'phi':phi,'wavelength':wavelength,'n1':n1,
-              'pTM':pTM,'pTE':pTE}
+def Set_Polarization(thetai,phi,wavelength,pTM,pTE,Constant):
+    Constant['thetai']=thetai
+    Constant['phi']=phi
+    Constant['wavelength']=wavelength
+    Constant['pTM']=pTM
+    Constant['pTE']=pTE
     k0=2*np.pi/wavelength
     Constant['k0']=k0
     n=[0,0,1]
-    kinc=n1*np.array([np.sin(thetai)*np.cos(phi),np.sin(thetai)*np.sin(phi),np.cos(thetai)])
+    kinc=Constant['n1']*np.array([np.sin(thetai)*np.cos(phi),np.sin(thetai)*np.sin(phi),np.cos(thetai)])
     Constant['kinc']=kinc
     if thetai==0:
         aTE=[0,1,0]
