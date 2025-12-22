@@ -198,6 +198,7 @@ def Construct_M_matrix(layer,Constant):
     temp1=a[:-1]
     temp2=a[1:]
     a_diff=(temp2-temp1)/dx
+    a_diff=np.where(abs(a_diff)>10,0,a_diff)
     c=a_diff/np.sqrt(1+a_diff*a_diff,dtype=complex)
     temp=F_series_gen(c,Constant['n_Tr'])
     c=Toeplitz(temp,Constant['n_Tr'])
