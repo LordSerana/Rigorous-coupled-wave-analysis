@@ -20,7 +20,7 @@ def layer_mode(layer,Constant):
     m=Constant['n_Tr']//2
     epsilon=np.ones(Nx,dtype=complex)*Constant['e1']
     temp=int(layer.fill_factor*Nx/2)
-    q0=int(Nx/2)
+    q0=Nx//2
     epsilon[q0-temp:q0+temp+1]=layer.n**2
     epsilon_recip=1/epsilon            
     fourier_coeffi=np.fft.fftshift(np.fft.fft(epsilon,axis=0)/epsilon.shape[0])
@@ -175,7 +175,7 @@ def Slice(n,layers,Constant):
     layer_new=[]
     layer_new.append(layer0)
     for i in range(n):
-        fill_factor=(i+1)/n*origin_FillFactor
+        fill_factor=(i+0.5)/n*origin_FillFactor
         layer=Layer(n=Constant['n2'],t=depth,fill_factor=fill_factor)
         layer_new.append(layer)
     layer_new.append(layer_last)
@@ -191,18 +191,17 @@ def Construct_M_matrix(layer,Constant):
     q0=Nx//2
     for i in range(Nx):
         if abs(i-q0)>=(Nx*layer.fill_factor//2):
-            a[i]=0
-        else:
-            pass
+            a[i]=0  
     ######根据a数组,求a数组的导数
-    temp1=a[:-1]
-    temp2=a[1:]
-    a_diff=(temp2-temp1)/dx
+    # temp1=a[:-1]
+    # temp2=a[1:]
+    # a_diff=(temp2-temp1)/dx
+    a_diff=np.gradient(a,dx)
     a_diff=np.where(abs(a_diff)>10,0,a_diff)
-    c=a_diff/np.sqrt(1+a_diff*a_diff,dtype=complex)
+    c=a_diff/np.sqrt(1+a_diff**2,dtype=complex)
     temp=F_series_gen(c,Constant['n_Tr'])
     c=Toeplitz(temp,Constant['n_Tr'])
-    s=1/np.sqrt(1+a_diff*a_diff,dtype=complex)
+    s=1/np.sqrt(1+a_diff**2,dtype=complex)
     temp=F_series_gen(s,Constant['n_Tr'])
     s=Toeplitz(temp,Constant['n_Tr'])
     E,E_recip_inv=layer_mode(layer,Constant)

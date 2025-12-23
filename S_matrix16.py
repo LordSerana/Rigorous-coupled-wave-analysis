@@ -59,6 +59,7 @@ def Calculate_Poynting(Eigenvector,Eigenvalue):
             else:
                 backward.append(i)
     new_ind=np.array(forward+backward,dtype=int)
+    Sz=Sz[new_ind]
     Eigenvalue=Eigenvalue[new_ind]
     Eigenvector=Eigenvector[:,new_ind]
     half=num//2
