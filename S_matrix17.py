@@ -13,6 +13,9 @@ from S_matrix.F_series_gen import F_series_gen
 
 plt.rcParams['font.sans-serif']=['SimHei']
 plt.rcParams['axes.unicode_minus']=False#解决plt画图中文乱码问题
+'''
+随着切片数的增加,总体反射效率降低
+'''
 
 def layer_mode(layer,Constant):
     #计算介电常数卷积矩阵

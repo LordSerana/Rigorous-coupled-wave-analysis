@@ -13,6 +13,9 @@ from S_matrix.F_series_gen import F_series_gen
 
 plt.rcParams['font.sans-serif']=['SimHei']
 plt.rcParams['axes.unicode_minus']=False#解决plt画图中文乱码问题
+'''
+该脚本能够正常计算单层垂直侧壁光栅的结果
+'''
 
 def layer_mode(layer,Constant):
     #计算介电常数卷积矩阵
