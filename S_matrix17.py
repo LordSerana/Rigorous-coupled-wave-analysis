@@ -79,14 +79,14 @@ def Calculate_Poynting(Eigenvector,Eigenvalue):
     Eigenvalue=Eigenvalue[new_ind]
     Eigenvector=Eigenvector[:,new_ind]
     ###############内部排序,按照虚部的降序排序
-    half=Eigenvalue.shape[0]//2
-    forward=np.argsort(-Eigenvalue[:half].imag)
-    backward=np.argsort(-abs(Eigenvalue[half:].imag))+half
-    new_ind=np.concatenate([forward,backward])
-    Eigenvalue=Eigenvalue[new_ind]
-    Eigenvalue[forward]=-abs(Eigenvalue[forward].real)+1j*abs(Eigenvalue[forward].imag)
-    Eigenvalue[backward]=abs(Eigenvalue[backward].real)-1j*abs(Eigenvalue[backward].imag)
-    Eigenvector=Eigenvector[:,new_ind]
+    # half=Eigenvalue.shape[0]//2
+    # forward=np.argsort(-Eigenvalue[:half].imag)
+    # backward=np.argsort(-abs(Eigenvalue[half:].imag))+half
+    # new_ind=np.concatenate([forward,backward])
+    # Eigenvalue=Eigenvalue[new_ind]
+    # Eigenvalue[forward]=-abs(Eigenvalue[forward].real)+1j*abs(Eigenvalue[forward].imag)
+    # Eigenvalue[backward]=abs(Eigenvalue[backward].real)-1j*abs(Eigenvalue[backward].imag)
+    # Eigenvector=Eigenvector[:,new_ind]
     return Eigenvector,Eigenvalue
 
 def Calculate_Gap(kx,ky,Constant):
@@ -315,13 +315,22 @@ def Compute(Constant,layers,plot=False):
     R_effi,T_effi=calcEffi(Constant['p'],Constant,S_global)
     Plot_Effi(R_effi,T_effi,Constant)
 
+#####################设定光栅参数#####################################
+Constant={}
+Constant['fill_factor']=1
+grating=Triangular(4*1e-6,30,Constant['fill_factor'])
+Constant['period']=grating.T
+a,a_diff=grating.profile()
+Constant['dimension']=1#光栅是一维光栅
+Constant['a']=a#光栅轮廓函数
+Constant['diff_a']=a_diff#光栅表面轮廓的导数函数
+Constant['depth']=Constant['period']/2*np.tan(np.radians(30))
 ######################设定仿真层#####################################
 layers=[
     Layer(n=1,t=1*1e-6),#光栅上方的自由空间,可以理解为空气层
-    Layer(n=1.4482+7.5367j,t=1.8*1e-6,fill_factor=1),#光栅层
+    Layer(n=1.4482+7.5367j,t=1.8*1e-6,fill_factor=Constant['fill_factor']),#光栅层
     Layer(n=1.4482+7.5367j,t=4*1e-6)#光栅基底区域
     ]
-Constant={}
 Constant['n1']=layers[0].n
 Constant['e1']=Constant['n1']**2
 Constant['n2']=layers[-1].n
@@ -346,14 +355,5 @@ Constant['error']=0.001#相对误差
 # R_effi=[]
 Abs_error=[]
 Rela_error=[]
-#####################设定光栅参数#####################################
-Constant['fill_factor']=1
-grating=Triangular(4*1e-6,30,Constant['fill_factor'])
-Constant['period']=grating.T
-a,a_diff=grating.profile()
-Constant['dimension']=1#光栅是一维光栅
-Constant['a']=a#光栅轮廓函数
-Constant['diff_a']=a_diff#光栅表面轮廓的导数函数
-Constant['depth']=Constant['period']/2*np.tan(np.radians(30))
 #####################开始计算########################################
 Compute(Constant,layers)
