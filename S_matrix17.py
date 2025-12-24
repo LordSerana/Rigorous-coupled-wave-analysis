@@ -58,23 +58,35 @@ def Calculate_Poynting(Eigenvector,Eigenvalue):
                 forward.append(i)
             else:
                 backward.append(i)
+    half=num//2
+    if len(forward)!=half or len(backward)!=half:
+        # raise ValueError(
+        #     f"Poynting分类错误:forward={len(forward)},backward={len(backward)},应各为{half}"
+        # )
+        forward=[]
+        backward=[]
+        for i in range(num):
+            if Eigenvalue[i].imag>tol:
+                forward.append(i)
+            elif Eigenvalue[i].imag<-tol:
+                backward.append(i)
+            else:
+                if Eigenvalue[i].real<-tol:
+                    forward.append(i)
+                else:
+                    backward.append(i)
     new_ind=np.array(forward+backward,dtype=int)
     Eigenvalue=Eigenvalue[new_ind]
     Eigenvector=Eigenvector[:,new_ind]
-    half=num//2
-    if len(forward)!=half or len(backward)!=half:
-        raise ValueError(
-            f"Poynting分类错误:forward={len(forward)},backward={len(backward)},应各为{half}"
-        )
     ###############内部排序,按照虚部的降序排序
-    # half=Eigenvalue.shape[0]//2
-    # forward=np.argsort(-Eigenvalue[:half].imag)
-    # backward=np.argsort(-abs(Eigenvalue[half:].imag))+half
-    # new_ind=np.concatenate([forward,backward])
-    # Eigenvalue=Eigenvalue[new_ind]
-    # # Eigenvalue[forward]=-abs(Eigenvalue[forward].real)+1j*abs(Eigenvalue[forward].imag)
-    # # Eigenvalue[backward]=abs(Eigenvalue[backward].real)-1j*abs(Eigenvalue[backward].imag)
-    # Eigenvector=Eigenvector[:,new_ind]
+    half=Eigenvalue.shape[0]//2
+    forward=np.argsort(-Eigenvalue[:half].imag)
+    backward=np.argsort(-abs(Eigenvalue[half:].imag))+half
+    new_ind=np.concatenate([forward,backward])
+    Eigenvalue=Eigenvalue[new_ind]
+    Eigenvalue[forward]=-abs(Eigenvalue[forward].real)+1j*abs(Eigenvalue[forward].imag)
+    Eigenvalue[backward]=abs(Eigenvalue[backward].real)-1j*abs(Eigenvalue[backward].imag)
+    Eigenvector=Eigenvector[:,new_ind]
     return Eigenvector,Eigenvalue
 
 def Calculate_Gap(kx,ky,Constant):
@@ -181,7 +193,7 @@ def Slice(n,layers,Constant):
     layer_new.append(layer_last)
     return layer_new
 
-def Construct_M_matrix(layer,Constant):
+def Construct_M_matrix(layer,n,Constant):
     kx=Constant['kx']
     ky=Constant['ky']
     Nx=2**10
@@ -191,13 +203,17 @@ def Construct_M_matrix(layer,Constant):
     q0=Nx//2
     for i in range(Nx):
         if abs(i-q0)>=(Nx*layer.fill_factor//2):
-            a[i]=0  
+            a[i]=0
+    if n!=1:
+        #切片层的顶部高度相同
+        temp=int((n-1)/Constant['n']*Constant['fill_factor']*Nx//2)
+        a[q0-temp:q0+temp+1]=a[q0-temp-1]
     ######根据a数组,求a数组的导数
     # temp1=a[:-1]
     # temp2=a[1:]
     # a_diff=(temp2-temp1)/dx
     a_diff=np.gradient(a,dx)
-    a_diff=np.where(abs(a_diff)>10,0,a_diff)
+    # a_diff=np.where(abs(a_diff)>10,0,a_diff)
     c=a_diff/np.sqrt(1+a_diff**2,dtype=complex)
     temp=F_series_gen(c,Constant['n_Tr'])
     c=Toeplitz(temp,Constant['n_Tr'])
@@ -264,12 +280,16 @@ def Compute(Constant,layers,plot=False):
     S_ref=Calculate_Ref(kx,ky,layers,Constant)
     S_global=Star(S_global,S_ref)
     ############构造4*4M矩阵####################
-    layers=Slice(10,layers,Constant)#光栅区域切片操作
+    layers=Slice(Constant['n'],layers,Constant)#光栅区域切片操作
+    n=1
     for i in layers[1:-1]:
-        M=Construct_M_matrix(i,Constant)
+        M=Construct_M_matrix(i,n,Constant)
+        n+=1
         #########计算EigenVector和Eigenvalue，并进行排序
         LAM,W=np.linalg.eig(M)
         Eigenvector,Eigenvalue=Calculate_Poynting(W,LAM)
+        # Eigenvector=W
+        # Eigenvalue=LAM
         #########构造S矩阵
         temp=np.linalg.solve(Eigenvector,temp1)
         half=np.shape(temp)[0]//2
@@ -280,8 +300,8 @@ def Compute(Constant,layers,plot=False):
         A_inv=np.linalg.inv(A)
         D_inv=np.linalg.inv(D)
         half=np.shape(Eigenvalue)[0]//2
-        X_P=np.diag(np.exp(Eigenvalue[:half]*Constant['k0']*Constant['depth']))
-        X_N=np.diag(np.exp(-Eigenvalue[half:]*Constant['k0']*Constant['depth']))
+        X_P=np.diag(np.exp(Eigenvalue[:half]*Constant['k0']*i.t))
+        X_N=np.diag(np.exp(-Eigenvalue[half:]*Constant['k0']*i.t))
         S11=np.linalg.solve(D-X_N@C@A_inv@X_P@B,X_N@C@A_inv@X_P@A-C)
         temp=X_N@(D-C@A_inv@B)
         S12=np.linalg.solve(D-X_N@C@A_inv@X_P@B,temp)
@@ -315,6 +335,7 @@ pTE=1
 Constant=Set_Polarization(thetai,phi,wavelength,pTM,pTE,Constant)
 m=15
 Constant['n_Tr']=2*m+1
+Constant['n']=10#切片数
 Constant['mx']=np.arange(-(Constant['n_Tr']//2),Constant['n_Tr']//2+1)
 Constant['my']=np.arange(-(Constant['n_Tr']//2),Constant['n_Tr']//2+1)
 Constant['Nx']=2**10
@@ -326,7 +347,8 @@ Constant['error']=0.001#相对误差
 Abs_error=[]
 Rela_error=[]
 #####################设定光栅参数#####################################
-grating=Triangular(4*1e-6,30,1)
+Constant['fill_factor']=1
+grating=Triangular(4*1e-6,30,Constant['fill_factor'])
 Constant['period']=grating.T
 a,a_diff=grating.profile()
 Constant['dimension']=1#光栅是一维光栅
