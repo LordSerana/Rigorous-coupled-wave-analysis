@@ -190,7 +190,7 @@ def Slice(n,layers,Constant):
     layer_new=[]
     layer_new.append(layer0)
     for i in range(n):
-        fill_factor=(i+0.5)/n*origin_FillFactor
+        fill_factor=(i+1)/n*origin_FillFactor
         layer=Layer(n=Constant['n2'],t=depth,fill_factor=fill_factor)
         layer_new.append(layer)
     layer_new.append(layer_last)
@@ -217,7 +217,7 @@ def Construct_M_matrix(layer,n,Constant):
     # a_diff=(temp2-temp1)/dx
     a_diff=np.gradient(a,dx)
     # a_diff=np.where(abs(a_diff)>10,0,a_diff)
-    c=a_diff/np.sqrt(1+a_diff**2,dtype=complex)
+    c=-a_diff/np.sqrt(1+a_diff**2,dtype=complex)
     temp=F_series_gen(c,Constant['n_Tr'])
     c=Toeplitz(temp,Constant['n_Tr'])
     s=1/np.sqrt(1+a_diff**2,dtype=complex)
@@ -225,24 +225,28 @@ def Construct_M_matrix(layer,n,Constant):
     s=Toeplitz(temp,Constant['n_Tr'])
     E,E_recip_inv=layer_mode(layer,Constant)
     A=c@E_recip_inv@c+s@E@s
+    # A=E@s@s+E_recip_inv@c@c
     B=s@E@c-c@E_recip_inv@s
+    # B=-(E-E_recip_inv)@(c@s)
     C=c@E@s-s@E_recip_inv@c
+    # C=-(E-E_recip_inv)@(c@s)
     D=s@E_recip_inv@s+c@E@c
+    # D=E@c@c+E_recip_inv@s@s
     D_inv=np.linalg.inv(D)
     I=np.eye(kx.shape[0])
     M11=-kx@D_inv@C
     M12=np.zeros_like(M11)
     M13=-kx@D_inv@ky
-    M14=I+kx@D_inv@kx
+    M14=kx@D_inv@kx+I
     M21=-ky@D_inv@C
     M22=np.zeros_like(M11)
-    M23=-(ky@D_inv@ky+I)
+    M23=-I-ky@ky@D_inv
     M24=ky@D_inv@kx
     M31=-kx@ky
-    M32=kx@kx+E
+    M32=E+kx@kx
     M33=np.zeros_like(M11)
     M34=np.zeros_like(M11)
-    M41=-kx@ky-A+B@D_inv@C
+    M41=-ky@ky-A+B@D_inv@C
     M42=ky@kx
     M43=B@D_inv@ky
     M44=-B@D_inv@kx
