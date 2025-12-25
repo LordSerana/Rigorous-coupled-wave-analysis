@@ -217,7 +217,7 @@ def Construct_M_matrix(layer,n,Constant):
     # a_diff=(temp2-temp1)/dx
     a_diff=np.gradient(a,dx)
     # a_diff=np.where(abs(a_diff)>10,0,a_diff)
-    c=-a_diff/np.sqrt(1+a_diff**2,dtype=complex)
+    c=a_diff/np.sqrt(1+a_diff**2,dtype=complex)
     temp=F_series_gen(c,Constant['n_Tr'])
     c=Toeplitz(temp,Constant['n_Tr'])
     s=1/np.sqrt(1+a_diff**2,dtype=complex)
