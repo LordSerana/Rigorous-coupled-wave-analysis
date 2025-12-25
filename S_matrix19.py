@@ -228,7 +228,7 @@ def Construct_M_matrix(layer,n,Constant):
     # A=E@s@s+E_recip_inv@c@c
     B=E@s@c-E_recip_inv@c@s
     C=E@c@s-E_recip_inv@s@c
-    D=E@c@c+E_recip_inv@s@s
+    D=E@(c**2)+E_recip_inv@(s**2)
     D_inv=np.linalg.inv(D)
     I=np.eye(kx.shape[0])
     M11=-kx@D_inv@C
