@@ -231,22 +231,22 @@ def Construct_M_matrix(layer,n,Constant):
     D=E@(c**2)+E_recip_inv@(s**2)
     D_inv=np.linalg.inv(D)
     I=np.eye(kx.shape[0])
-    M11=-kx@D_inv@C
+    M11=-1j*kx@D_inv@C
     M12=np.zeros_like(M11)
-    M13=-kx@D_inv@ky
-    M14=kx@D_inv@kx+I
-    M21=-ky@D_inv@C
+    M13=kx@D_inv@ky
+    M14=I-kx@D_inv@kx
+    M21=-1j*ky@D_inv@C
     M22=np.zeros_like(M11)
-    M23=-I-ky@D_inv@ky
-    M24=ky@D_inv@kx
-    M31=-kx@ky
-    M32=E+kx@kx
+    M23=-I+ky@D_inv@ky
+    M24=-ky@D_inv@kx
+    M31=kx@ky
+    M32=E-kx@kx
     M33=np.zeros_like(M11)
     M34=np.zeros_like(M11)
-    M41=-ky@ky-A+B@D_inv@C
-    M42=ky@kx
-    M43=B@D_inv@ky
-    M44=-B@D_inv@kx
+    M41=ky@ky-A+B@D_inv@C
+    M42=-ky@kx
+    M43=1j*B@D_inv@ky
+    M44=-1j*B@D_inv@kx
     M=np.block([[M11,M12,M13,M14],[M21,M22,M23,M24],[M31,M32,M33,M34],[M41,M42,M43,M44]])
     return M
 
