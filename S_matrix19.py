@@ -6,7 +6,7 @@ from C_Method.Grating import Triangular
 from C_Method.Toeplitze import Toeplitz
 from S_matrix.Layer import Layer
 from S_matrix.Star import Star
-from S_matrix.CalcEffi import calcEffi
+# from S_matrix.CalcEffi import calcEffi
 from S_matrix.Plot_Effi import Plot_Effi
 import matplotlib.pyplot as plt
 from S_matrix.F_series_gen import F_series_gen
@@ -127,6 +127,7 @@ def Calculate_Ref(kx,ky,layers,Constant):
     LAM=np.concatenate([LAM,LAM])
     Eigenvalue=np.concatenate([LAM,-LAM])
     Eigenvector=np.block([[W,W],[V,-V]])
+    Constant['Vref']=Eigenvector
     V_g_E_P=Constant['V_g_E_P']
     V_g_E_N=Constant['V_g_E_N']
     V_g_H_P=Constant['V_g_H_P']
@@ -159,6 +160,7 @@ def Calculate_trn(kx,ky,layers,Constant):
     V=omega@np.linalg.inv(np.diag(LAM))
     Eigenvalue=np.concatenate([LAM,-LAM])
     Eigenvector=np.block([[W,W],[V,-V]])
+    Constant['Vtrn']=Eigenvector
     V_g_E_P=Constant['V_g_E_P']
     V_g_E_N=Constant['V_g_E_N']
     V_g_H_P=Constant['V_g_H_P']
@@ -216,7 +218,7 @@ def Construct_M_matrix(layer,n,Constant):
     # temp2=a[1:]
     # a_diff=(temp2-temp1)/dx
     a_diff=np.gradient(a,dx)
-    # a_diff=np.where(abs(a_diff)>10,0,a_diff)
+    a_diff=np.clip(a_diff,-100,100)
     s=a_diff/np.sqrt(1+a_diff**2,dtype=complex)
     temp=F_series_gen(s,Constant['n_Tr'])
     s=Toeplitz(temp,Constant['n_Tr'])
@@ -225,11 +227,11 @@ def Construct_M_matrix(layer,n,Constant):
     c=Toeplitz(temp,Constant['n_Tr'])
     E,E_recip_inv=layer_mode(layer,Constant)
     # A=E@(s**2)+E_recip_inv@(c**2)
-    A=E@s@s+E_recip_inv@c@c
-    B=E@s@c-E_recip_inv@c@s
-    C=E@c@s-E_recip_inv@s@c
+    A=s@E@s+c@E_recip_inv@c
+    B=s@E@c-c@E_recip_inv@s
+    C=c@E@s-s@E_recip_inv@c
     # D=E@(c**2)+E_recip_inv@(s**2)
-    D=E@(c@c)+E_recip_inv@s@s
+    D=c@E@c+s@E_recip_inv@s
     D_inv=np.linalg.inv(D)
     I=np.eye(kx.shape[0])
     M11=-1j*kx@D_inv@C
@@ -250,6 +252,34 @@ def Construct_M_matrix(layer,n,Constant):
     M44=-1j*B@D_inv@kx
     M=np.block([[M11,M12,M13,M14],[M21,M22,M23,M24],[M31,M32,M33,M34],[M41,M42,M43,M44]])
     return M
+
+def CalcEffi(p,Constant,S_global):
+    m=Constant['n_Tr']//2
+    num=np.shape(S_global)[1]
+    block_size=int(num/4)
+    delta0=np.zeros(2*m+1)
+    delta0[m]=1
+    c_inc=np.concatenate((p[0]*delta0,p[1]*delta0))
+    c_ref=S_global[:4*m+2,:4*m+2]@c_inc
+    c_trn=S_global[4*m+2:,:4*m+2]@c_inc#修改到这了
+    temp=np.concatenate([np.zeros(2*m+1),c_ref])
+    Ref_EM_field=Constant['Vref']@temp
+    Ex_ref=Ref_EM_field[:block_size]
+    Ey_ref=Ref_EM_field[block_size:2*block_size]
+    Hx_ref=Ref_EM_field[2*block_size:3*block_size]
+    Hy_ref=Ref_EM_field[3*block_size:]
+    Sz_ref=np.real(np.dot(1j*Ex_ref,np.conj(Hy_ref))-np.dot(1j*Ey_ref,np.conj(Hx_ref)))
+    temp=np.concatenate([c_trn,np.zeros(2*m+1)])
+    Trn_EM_field=Constant['Vtrn']@temp
+    Ex_trn=Trn_EM_field[:block_size]
+    Ey_trn=Trn_EM_field[block_size:2*block_size]
+    Hx_trn=Trn_EM_field[2*block_size:3*block_size]
+    Hy_trn=Trn_EM_field[3*block_size:]
+    Sz_trn=np.real(np.dot(1j*Ex_trn,np.conj(Hy_trn))-np.dot(1j*Ey_trn,np.conj(Hx_trn)))
+    R=abs(Sz_ref)
+    T=abs(Sz_trn)
+    E_inc=Constant['p']
+    H_inc=1j*np.sqrt(1/1)*(-p[1])
 
 def Compute(Constant,layers,plot=False):
     ############前期计算的准备工作##############
@@ -317,7 +347,7 @@ def Compute(Constant,layers,plot=False):
         S_global=Star(S_global,S)
     S_trn=Calculate_trn(kx,ky,layers,Constant)
     S_global=Star(S_global,S_trn)
-    R_effi,T_effi=calcEffi(Constant['p'],Constant,S_global)
+    R_effi,T_effi=CalcEffi(Constant['p'],Constant,S_global)
     Constant['R_effi']=R_effi
     Constant['T_effi']=T_effi
     return Constant
