@@ -47,7 +47,7 @@ def Calculate_Poynting(Eigenvector,Eigenvalue):
         Hx=temp[2*block_size:3*block_size]
         Hy=temp[3*block_size:]
         Sz[i]=np.real(np.dot(1j*Ex,np.conj(Hy))-np.dot(1j*Ey,np.conj(Hx)))
-    #首先对Poynting向量初步排序，正的排在前半，负的排在后半
+    # #首先对Poynting向量初步排序，正的排在前半，负的排在后半
     tol=1e-12
     forward=[]
     backward=[]
@@ -217,18 +217,19 @@ def Construct_M_matrix(layer,n,Constant):
     # a_diff=(temp2-temp1)/dx
     a_diff=np.gradient(a,dx)
     # a_diff=np.where(abs(a_diff)>10,0,a_diff)
-    c=a_diff/np.sqrt(1+a_diff**2,dtype=complex)
-    temp=F_series_gen(c,Constant['n_Tr'])
-    c=Toeplitz(temp,Constant['n_Tr'])
-    s=1/np.sqrt(1+a_diff**2,dtype=complex)
+    s=a_diff/np.sqrt(1+a_diff**2,dtype=complex)
     temp=F_series_gen(s,Constant['n_Tr'])
     s=Toeplitz(temp,Constant['n_Tr'])
+    c=1/np.sqrt(1+a_diff**2,dtype=complex)
+    temp=F_series_gen(c,Constant['n_Tr'])
+    c=Toeplitz(temp,Constant['n_Tr'])
     E,E_recip_inv=layer_mode(layer,Constant)
-    A=E@(s**2)+E_recip_inv@(c**2)
-    # A=E@s@s+E_recip_inv@c@c
+    # A=E@(s**2)+E_recip_inv@(c**2)
+    A=E@s@s+E_recip_inv@c@c
     B=E@s@c-E_recip_inv@c@s
     C=E@c@s-E_recip_inv@s@c
-    D=E@(c**2)+E_recip_inv@(s**2)
+    # D=E@(c**2)+E_recip_inv@(s**2)
+    D=E@(c@c)+E_recip_inv@s@s
     D_inv=np.linalg.inv(D)
     I=np.eye(kx.shape[0])
     M11=-1j*kx@D_inv@C
@@ -317,7 +318,9 @@ def Compute(Constant,layers,plot=False):
     S_trn=Calculate_trn(kx,ky,layers,Constant)
     S_global=Star(S_global,S_trn)
     R_effi,T_effi=calcEffi(Constant['p'],Constant,S_global)
-    Plot_Effi(R_effi,T_effi,Constant)
+    Constant['R_effi']=R_effi
+    Constant['T_effi']=T_effi
+    return Constant
 
 #####################设定光栅参数#####################################
 Constant={}
@@ -343,12 +346,12 @@ Constant['e2']=Constant['n2']**2
 thetai=np.radians(0)#入射角thetai
 phi=np.radians(0)#入射角phi
 wavelength=632.8*1e-9
-pTM=0
+pTM=1
 pTE=1
 Constant=Set_Polarization(thetai,phi,wavelength,pTM,pTE,Constant)
-m=20
+m=60
 Constant['n_Tr']=2*m+1
-Constant['n']=20#切片数
+Constant['n']=40#切片数
 Constant['mx']=np.arange(-(Constant['n_Tr']//2),Constant['n_Tr']//2+1)
 Constant['my']=np.arange(-(Constant['n_Tr']//2),Constant['n_Tr']//2+1)
 Constant['Nx']=2**10
@@ -360,4 +363,6 @@ Constant['error']=0.001#相对误差
 Abs_error=[]
 Rela_error=[]
 #####################开始计算########################################
-Compute(Constant,layers)
+Constant=Compute(Constant,layers)
+R_effi=[0.15517,0.19151,0.01522,0.00856,0.0144,0.002,0.00946,0.002,0.0144,0.00856,0.01522,0.19151,0.15517]
+Plot_Effi(Constant,effi=R_effi)
