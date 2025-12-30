@@ -97,7 +97,7 @@ def Calculate_Gap(kx,ky,Constant):
     W=np.eye(2*kx.shape[0])
     omega=np.block([[kx@ky,I+ky@ky],[-(I+kx@kx),-kx@ky]])#到底用1还是I？用I
     V=-1j*omega
-    LAM=-1j*Constant['kzref']
+    LAM=1j*Constant['kz']
     LAM=np.concatenate([LAM,LAM])
     Eigenvalue=np.concatenate([LAM,-LAM])
     Eigenvector=np.block([[W,W],[V,-V]])
@@ -120,7 +120,7 @@ def Calculate_Ref(kx,ky,layers,Constant):
     W=np.eye(2*kx.shape[0])
     omega=np.block([[kx@ky,I+ky@ky],[-(I+kx@kx),-kx@ky]])#到底用1还是I？用I
     V=-1j*omega
-    kz=-Constant['kzref']
+    kz=Constant['kz']
     if kz.ndim==2:
         kz=np.diag(kz)
     LAM=1j*kz
@@ -152,7 +152,7 @@ def Calculate_trn(kx,ky,layers,Constant):
     I=np.eye(kx.shape[0])*Constant['e2']
     W=np.eye(2*kx.shape[0])
     omega=np.block([[kx@ky,I+ky@ky],[-(I+kx@kx),-kx@ky]])#到底用1还是I？用I
-    kz=-Constant['kzref']
+    kz=Constant['kz']
     if kz.ndim==2:
         kz=np.diag(kz)
     LAM=1j*kz
@@ -256,49 +256,30 @@ def Construct_M_matrix(layer,n,Constant):
 def CalcEffi(p,Constant,S_global):
     kx=Constant['kx']
     ky=Constant['ky']
-    kz=Constant['kzref']
+    kz=Constant['kz']
+    kinc=Constant['kinc']
+    kxm=np.diag(kx)
+    kym=np.diag(ky)
+    kzm=np.diag(kz)
+    kperp=np.sqrt(kxm**2+kym**2)
+    eTE=np.array([-kym/kperp,kxm/kperp])
+    eTM=np.array([kxm*kzm/(Constant['n1']**2*kperp),kym*kzm/(Constant['n1']**2*kperp)])
     m=Constant['n_Tr']//2
-    num=np.shape(S_global)[1]
-    block_size=int(num/4)
     delta0=np.zeros(2*m+1)
     delta0[m]=1
     c_inc=np.concatenate((p[0]*delta0,p[1]*delta0))
     c_ref=S_global[:4*m+2,:4*m+2]@c_inc
-    c_trn=S_global[4*m+2:,:4*m+2]@c_inc#修改到这了
-    # temp=np.concatenate([np.zeros_like(c_ref),c_ref])
-    # Ref_EM_field=Constant['Vref']@temp
-    # Ex_ref=Ref_EM_field[:block_size]
-    # Ey_ref=Ref_EM_field[block_size:2*block_size]
-    # Hx_ref=Ref_EM_field[2*block_size:3*block_size]/1j*np.sqrt(Constant['e0']/Constant['u0'])
-    # Hy_ref=Ref_EM_field[3*block_size:]/1j*np.sqrt(Constant['e0']/Constant['u0'])
-    # Sz_ref=np.real(1j*Ex_ref*np.conj(Hy_ref)-1j*Ey_ref*np.conj(Hx_ref))
-    # temp=np.concatenate([c_trn,np.zeros_like(c_trn)])
-    # Trn_EM_field=Constant['Vtrn']@temp
-    # Ex_trn=Trn_EM_field[:block_size]
-    # Ey_trn=Trn_EM_field[block_size:2*block_size]
-    # Hx_trn=Trn_EM_field[2*block_size:3*block_size]/1j*np.sqrt(Constant['e0']/Constant['u0'])
-    # Hy_trn=Trn_EM_field[3*block_size:]/1j*np.sqrt(Constant['e0']/Constant['u0'])
-    # Sz_trn=np.real(np.dot(1j*Ex_trn,np.conj(Hy_trn))-np.dot(1j*Ey_trn,np.conj(Hx_trn)))
+    c_trn=S_global[4*m+2:,:4*m+2]@c_inc
     rx=c_ref[:2*m+1]
     ry=c_ref[2*m+1:]
     rz=-np.linalg.inv(kz)@(kx@rx+ky@ry)
     tx=c_trn[:2*m+1]
     ty=c_trn[2*m+1:]
     tz=-np.linalg.inv(kz)@(kx@tx+ky@ty)
-    Hrx=(ky@rz-kz@ry)/(Constant['omiga']*Constant['u0'])
-    Hry=(kz@rx-kx@rz)/(Constant['omiga']*Constant['u0'])
-    Htx=(ky@tz-kz@ty)/(Constant['omiga']*Constant['u0'])
-    Hty=(kz@tx-kx@tz)/(Constant['omiga']*Constant['u0'])
-    Sz_inc=np.real(Constant['p'][0]*np.conj(Constant['kinc'][2]/(Constant['omiga']*Constant['u0']))-
-                   Constant['p'][1]*np.conj(0))
-    Sz_r=np.real(rx*np.conj(Hry)-ry*np.conj(Hrx))
-    Sz_t=np.real(tx*np.conj(Hty)-ty*np.conj(Htx))
-    R=Sz_r/Sz_inc
-    T=Sz_t/Sz_inc
-    # E_inc=Constant['p']
-    # H_inc=1j*np.sqrt(1/1)*(-p[1])
-    R_effi=np.real(R)
-    T_effi=np.real(T)
+    R=np.real(kz)/np.real(kinc[2])*(np.abs(rx)**2+np.abs(ry)**2)
+    R_effi=np.sum(R,axis=1)
+    T=np.real(kz)/np.real(kinc[2])*(np.abs(tx)**2+np.abs(ty)**2)
+    T_effi=np.sum(T,axis=1)
     return R_effi,T_effi
 
 def Compute(Constant,layers,plot=False):
@@ -320,7 +301,7 @@ def Compute(Constant,layers,plot=False):
         if np.imag(kz)<0:
             kz=-kz
         kzref[i,i]=kz
-    Constant['kzref']=-kzref
+    Constant['kz']=kzref
     nDim=Constant['n_Tr']
     #############计算间隙介质的散射矩阵##########
     Constant=Calculate_Gap(kx,ky,Constant)
@@ -416,5 +397,5 @@ Abs_error=[]
 Rela_error=[]
 #####################开始计算########################################
 Constant=Compute(Constant,layers)
-R_effi=[0.15517,0.19151,0.01522,0.00856,0.0144,0.002,0.00946,0.002,0.0144,0.00856,0.01522,0.19151,0.15517]
+R_effi=[0.15517,0.19151,0.01522,0.00856,0.0144,0.002,0.00946,0.002,0.0144,0.00856,0.01522,0.19151,0.15517]#sum=0.78318
 Plot_Effi(Constant,effi=R_effi)
