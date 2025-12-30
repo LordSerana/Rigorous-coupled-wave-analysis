@@ -254,6 +254,9 @@ def Construct_M_matrix(layer,n,Constant):
     return M
 
 def CalcEffi(p,Constant,S_global):
+    kx=Constant['kx']
+    ky=Constant['ky']
+    kz=Constant['kzref']
     m=Constant['n_Tr']//2
     num=np.shape(S_global)[1]
     block_size=int(num/4)
@@ -262,24 +265,41 @@ def CalcEffi(p,Constant,S_global):
     c_inc=np.concatenate((p[0]*delta0,p[1]*delta0))
     c_ref=S_global[:4*m+2,:4*m+2]@c_inc
     c_trn=S_global[4*m+2:,:4*m+2]@c_inc#修改到这了
-    temp=np.concatenate([np.zeros(2*m+1),c_ref])
-    Ref_EM_field=Constant['Vref']@temp
-    Ex_ref=Ref_EM_field[:block_size]
-    Ey_ref=Ref_EM_field[block_size:2*block_size]
-    Hx_ref=Ref_EM_field[2*block_size:3*block_size]
-    Hy_ref=Ref_EM_field[3*block_size:]
-    Sz_ref=np.real(np.dot(1j*Ex_ref,np.conj(Hy_ref))-np.dot(1j*Ey_ref,np.conj(Hx_ref)))
-    temp=np.concatenate([c_trn,np.zeros(2*m+1)])
-    Trn_EM_field=Constant['Vtrn']@temp
-    Ex_trn=Trn_EM_field[:block_size]
-    Ey_trn=Trn_EM_field[block_size:2*block_size]
-    Hx_trn=Trn_EM_field[2*block_size:3*block_size]
-    Hy_trn=Trn_EM_field[3*block_size:]
-    Sz_trn=np.real(np.dot(1j*Ex_trn,np.conj(Hy_trn))-np.dot(1j*Ey_trn,np.conj(Hx_trn)))
-    R=abs(Sz_ref)
-    T=abs(Sz_trn)
-    E_inc=Constant['p']
-    H_inc=1j*np.sqrt(1/1)*(-p[1])
+    # temp=np.concatenate([np.zeros_like(c_ref),c_ref])
+    # Ref_EM_field=Constant['Vref']@temp
+    # Ex_ref=Ref_EM_field[:block_size]
+    # Ey_ref=Ref_EM_field[block_size:2*block_size]
+    # Hx_ref=Ref_EM_field[2*block_size:3*block_size]/1j*np.sqrt(Constant['e0']/Constant['u0'])
+    # Hy_ref=Ref_EM_field[3*block_size:]/1j*np.sqrt(Constant['e0']/Constant['u0'])
+    # Sz_ref=np.real(1j*Ex_ref*np.conj(Hy_ref)-1j*Ey_ref*np.conj(Hx_ref))
+    # temp=np.concatenate([c_trn,np.zeros_like(c_trn)])
+    # Trn_EM_field=Constant['Vtrn']@temp
+    # Ex_trn=Trn_EM_field[:block_size]
+    # Ey_trn=Trn_EM_field[block_size:2*block_size]
+    # Hx_trn=Trn_EM_field[2*block_size:3*block_size]/1j*np.sqrt(Constant['e0']/Constant['u0'])
+    # Hy_trn=Trn_EM_field[3*block_size:]/1j*np.sqrt(Constant['e0']/Constant['u0'])
+    # Sz_trn=np.real(np.dot(1j*Ex_trn,np.conj(Hy_trn))-np.dot(1j*Ey_trn,np.conj(Hx_trn)))
+    rx=c_ref[:2*m+1]
+    ry=c_ref[2*m+1:]
+    rz=-np.linalg.inv(kz)@(kx@rx+ky@ry)
+    tx=c_trn[:2*m+1]
+    ty=c_trn[2*m+1:]
+    tz=-np.linalg.inv(kz)@(kx@tx+ky@ty)
+    Hrx=(ky@rz-kz@ry)/(Constant['omiga']*Constant['u0'])
+    Hry=(kz@rx-kx@rz)/(Constant['omiga']*Constant['u0'])
+    Htx=(ky@tz-kz@ty)/(Constant['omiga']*Constant['u0'])
+    Hty=(kz@tx-kx@tz)/(Constant['omiga']*Constant['u0'])
+    Sz_inc=np.real(Constant['p'][0]*np.conj(Constant['kinc'][2]/(Constant['omiga']*Constant['u0']))-
+                   Constant['p'][1]*np.conj(0))
+    Sz_r=np.real(rx*np.conj(Hry)-ry*np.conj(Hrx))
+    Sz_t=np.real(tx*np.conj(Hty)-ty*np.conj(Htx))
+    R=Sz_r/Sz_inc
+    T=Sz_t/Sz_inc
+    # E_inc=Constant['p']
+    # H_inc=1j*np.sqrt(1/1)*(-p[1])
+    R_effi=np.real(R)
+    T_effi=np.real(T)
+    return R_effi,T_effi
 
 def Compute(Constant,layers,plot=False):
     ############前期计算的准备工作##############
@@ -389,6 +409,8 @@ Constant['c']=299792458
 Constant['omiga']=2*np.pi*Constant['c']/Constant['wavelength']
 Constant['accuracy']=1e-9
 Constant['error']=0.001#相对误差
+Constant['e0']=8.854*1e-12
+Constant['u0']=4*np.pi*1e-7
 # R_effi=[]
 Abs_error=[]
 Rela_error=[]
