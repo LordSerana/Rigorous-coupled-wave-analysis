@@ -6,7 +6,7 @@ from C_Method.Grating import Triangular
 from C_Method.Toeplitze import Toeplitz
 from S_matrix.Layer import Layer
 from S_matrix.Star import Star
-# from S_matrix.CalcEffi import calcEffi
+from S_matrix.CalcEffi import calcEffi
 from S_matrix.Plot_Effi import Plot_Effi
 import matplotlib.pyplot as plt
 from S_matrix.F_series_gen import F_series_gen
@@ -253,34 +253,34 @@ def Construct_M_matrix(layer,n,Constant):
     M=np.block([[M11,M12,M13,M14],[M21,M22,M23,M24],[M31,M32,M33,M34],[M41,M42,M43,M44]])
     return M
 
-def CalcEffi(p,Constant,S_global):
-    kx=Constant['kx']
-    ky=Constant['ky']
-    kz=Constant['kz']
-    kinc=Constant['kinc']
-    kxm=np.diag(kx)
-    kym=np.diag(ky)
-    kzm=np.diag(kz)
-    kperp=np.sqrt(kxm**2+kym**2)
-    eTE=np.array([-kym/kperp,kxm/kperp])
-    eTM=np.array([kxm*kzm/(Constant['n1']**2*kperp),kym*kzm/(Constant['n1']**2*kperp)])
-    m=Constant['n_Tr']//2
-    delta0=np.zeros(2*m+1)
-    delta0[m]=1
-    c_inc=np.concatenate((p[0]*delta0,p[1]*delta0))
-    c_ref=S_global[:4*m+2,:4*m+2]@c_inc
-    c_trn=S_global[4*m+2:,:4*m+2]@c_inc
-    rx=c_ref[:2*m+1]
-    ry=c_ref[2*m+1:]
-    rz=-np.linalg.inv(kz)@(kx@rx+ky@ry)
-    tx=c_trn[:2*m+1]
-    ty=c_trn[2*m+1:]
-    tz=-np.linalg.inv(kz)@(kx@tx+ky@ty)
-    R=np.real(kz)/np.real(kinc[2])*(np.abs(rx)**2+np.abs(ry)**2)
-    R_effi=np.sum(R,axis=1)
-    T=np.real(kz)/np.real(kinc[2])*(np.abs(tx)**2+np.abs(ty)**2)
-    T_effi=np.sum(T,axis=1)
-    return R_effi,T_effi
+# def CalcEffi(p,Constant,S_global):
+#     kx=Constant['kx']
+#     ky=Constant['ky']
+#     kz=Constant['kz']
+#     kinc=Constant['kinc']
+#     kxm=np.diag(kx)
+#     kym=np.diag(ky)
+#     kzm=np.diag(kz)
+#     kperp=np.sqrt(kxm**2+kym**2)
+#     eTE=np.array([-kym/kperp,kxm/kperp])
+#     eTM=np.array([kxm*kzm/(Constant['n1']**2*kperp),kym*kzm/(Constant['n1']**2*kperp)])
+#     m=Constant['n_Tr']//2
+#     delta0=np.zeros(2*m+1)
+#     delta0[m]=1
+#     c_inc=np.concatenate((p[0]*delta0,p[1]*delta0))
+#     c_ref=S_global[:4*m+2,:4*m+2]@c_inc
+#     c_trn=S_global[4*m+2:,:4*m+2]@c_inc
+#     rx=c_ref[:2*m+1]
+#     ry=c_ref[2*m+1:]
+#     rz=-np.linalg.inv(kz)@(kx@rx+ky@ry)
+#     tx=c_trn[:2*m+1]
+#     ty=c_trn[2*m+1:]
+#     tz=-np.linalg.inv(kz)@(kx@tx+ky@ty)
+#     R=np.real(kz)/np.real(kinc[2])*(np.abs(rx)**2+np.abs(ry)**2)
+#     R_effi=np.sum(R,axis=1)
+#     T=np.real(kz)/np.real(kinc[2])*(np.abs(tx)**2+np.abs(ty)**2)
+#     T_effi=np.sum(T,axis=1)
+#     return R_effi,T_effi
 
 def Compute(Constant,layers,plot=False):
     ############前期计算的准备工作##############
@@ -348,7 +348,7 @@ def Compute(Constant,layers,plot=False):
         S_global=Star(S_global,S)
     S_trn=Calculate_trn(kx,ky,layers,Constant)
     S_global=Star(S_global,S_trn)
-    R_effi,T_effi=CalcEffi(Constant['p'],Constant,S_global)
+    R_effi,T_effi=calcEffi(Constant['p'],Constant,S_global)
     Constant['R_effi']=R_effi
     Constant['T_effi']=T_effi
     return Constant
