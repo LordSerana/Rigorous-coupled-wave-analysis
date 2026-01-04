@@ -10,19 +10,22 @@ class Triangular():
         self.T=T
         self.base_angle=np.radians(base_angle)
         self.fill_factor=fill_factor
-        self.amplitude=T*fill_factor/2*np.tan(self.base_angle)
+        self.depth=T*fill_factor/2*np.tan(self.base_angle)
     
     def profile(self):
         '''
         m:快速傅里叶变换阶数
         '''
-        a_fun=lambda x:(x*np.tan(self.base_angle))*(x<=self.T/2)+(self.amplitude-(x-self.T/2)*np.tan(self.base_angle))*(x>self.T/2)
-        a_diff_fun=lambda x:(np.tan(self.base_angle))*(x<=self.T/2)+(-np.tan(self.base_angle))*(x>self.T/2)
+        a_fun=lambda x:(0)*(x<((1-self.fill_factor)/2)*self.T)+(x*np.tan(self.base_angle))*((1-self.fill_factor)/2*self.T<x<=self.T/2)\
+        +(self.depth-(x-self.T/2)*np.tan(self.base_angle))*(self.T/2<x<((1-self.fill_factor)/2+self.T/2))\
+        +(0)*(x>((1-self.fill_factor)/2+self.T/2))
+        # a_fun=lambda x:(x*np.tan(self.base_angle))*(x<=self.T/2)+(self.depth-(x-self.T/2)*np.tan(self.base_angle))*(x>self.T/2)
+        # a_diff_fun=lambda x:(np.tan(self.base_angle))*(x<=self.T/2)+(-np.tan(self.base_angle))*(x>self.T/2)
         # plt.plot(x,y)
         # plt.xlabel("x")
         # plt.ylabel("Grating profile")
         # plt.show()
-        return a_fun,a_diff_fun
+        return a_fun
 
 class Rectangular():
     def __init__(self,T,fill_factor,depth):
@@ -30,3 +33,11 @@ class Rectangular():
         self.T=T
         self.fill_factor=fill_factor
         self.depth=depth
+    
+    def profile(self):
+        a_fun=lambda x:(0)*(x<((1-self.fill_factor)/2)*self.T)+\
+            self.depth*((1-self.fill_factor)/2*self.T<x<=(1+self.fill_factor)/2*self.T)+\
+            (0)*(x>(1+self.fill_factor)/2*self.T)
+        
+        a_fun=lambda x:(self.depth)*(x<=self.T*self.fill_factor)+(0)*(x>self.T*self.fill_factor)
+        return a_fun

@@ -2,15 +2,14 @@ import numpy as np
 import sys
 sys.path.append("E:/Project/Python")
 from S_matrix.Set_polarization import Set_Polarization
-from C_Method.Grating import Triangular
 from C_Method.Toeplitze import Toeplitz
 from S_matrix.Layer import Layer
 from S_matrix.Star import Star
 from S_matrix.Plot_Effi import Plot_Effi
 import matplotlib.pyplot as plt
 from S_matrix.F_series_gen import F_series_gen
-from scipy.signal import savgol_filter
 from S_matrix.CalcEffi import calcEffi
+from S_matrix.Grating import Rectangular,Triangular
 
 plt.rcParams['font.sans-serif']=['SimHei']
 plt.rcParams['axes.unicode_minus']=False#解决plt画图中文乱码问题
@@ -115,7 +114,7 @@ def Calculate_Gap(kx,ky,Constant):
     Constant['V0']=V
     return Constant
 
-def Calculate_Ref(kx,ky,layers,Constant):
+def Calculate_Ref(kx,ky,layer,Constant):
     #按计划，使用解析式替代矩阵计算，如Calculate_Gap所做的那样
     I=np.eye(kx.shape[0])
     W=np.eye(2*kx.shape[0])
@@ -148,11 +147,11 @@ def Calculate_Ref(kx,ky,layers,Constant):
     S_ref=np.block([[S11,S12],[S21,S22]])
     return S_ref
 
-def Calculate_trn(kx,ky,layers,Constant):
+def Calculate_trn(kx,ky,layer,Constant):
     ###使用解析式的形式
     I=np.eye(kx.shape[0])*Constant['e2']
     W=np.eye(2*kx.shape[0])
-    omega=np.block([[kx@ky,I+ky@ky],[-(I+kx@kx),-kx@ky]])#到底用1还是I？用I
+    omega=np.block([[kx@ky,I-kx@kx],[ky@ky-I,-ky@kx]])#到底用1还是I？用I
     kz=Constant['kz']
     if kz.ndim==2:
         kz=np.diag(kz)
@@ -217,8 +216,10 @@ def Construct_M_matrix(layer,n,Constant):
     # temp1=a[:-1]
     # temp2=a[1:]
     # a_diff=(temp2-temp1)/dx
-    a_smooth=savgol_filter(a,window_length=21,polyorder=3)
-    a_diff=np.gradient(a_smooth,dx)
+    if Constant['name']=="Rectangular":
+        a_diff=np.zeros_like(a)
+    else:
+        a_diff=np.gradient(a,dx)
     s=a_diff/np.sqrt(1+a_diff**2,dtype=complex)
     temp=F_series_gen(s,Constant['n_Tr'])
     s=Toeplitz(temp,Constant['n_Tr'])
@@ -226,12 +227,12 @@ def Construct_M_matrix(layer,n,Constant):
     temp=F_series_gen(c,Constant['n_Tr'])
     c=Toeplitz(temp,Constant['n_Tr'])
     E,E_recip_inv=layer_mode(layer,Constant)
-    # A=E@(s**2)+E_recip_inv@(c**2)
-    A=s@E@s+c@E_recip_inv@c
+    A=E@(s**2)+E_recip_inv@(c**2)
+    # A=s@E@s+c@E_recip_inv@c
     B=s@E@c-c@E_recip_inv@s
     C=c@E@s-s@E_recip_inv@c
-    # D=E@(c**2)+E_recip_inv@(s**2)
-    D=c@E@c+s@E_recip_inv@s
+    D=E@(c**2)+E_recip_inv@(s**2)
+    # D=c@E@c+s@E_recip_inv@s
     D_inv=np.linalg.inv(D)
     I=np.eye(kx.shape[0])
     M11=-1j*kx@D_inv@C
@@ -309,10 +310,11 @@ def Compute(Constant,layers,plot=False):
     ##############构建全局散射矩阵#############
     zero=np.zeros((2*nDim,2*nDim))
     S_global=np.block([[zero,np.eye(2*nDim)],[np.eye(2*nDim),zero]])
-    S_ref=Calculate_Ref(kx,ky,layers,Constant)
+    S_ref=Calculate_Ref(kx,ky,layers[0],Constant)
     S_global=Star(S_global,S_ref)
     ############构造4*4M矩阵####################
-    layers=Slice(Constant['n'],layers,Constant)#光栅区域切片操作
+    if grating.name!="Rectangular":
+        layers=Slice(Constant['n'],layers,Constant)#光栅区域切片操作
     n=1
     for i in layers[1:-1]:
         M=Construct_M_matrix(i,n,Constant)
@@ -320,8 +322,6 @@ def Compute(Constant,layers,plot=False):
         #########计算EigenVector和Eigenvalue，并进行排序
         LAM,W=np.linalg.eig(M)
         Eigenvector,Eigenvalue=Calculate_Poynting(W,LAM)
-        # Eigenvector=W
-        # Eigenvalue=LAM
         #########构造S矩阵
         temp=np.linalg.solve(Eigenvector,temp1)
         half=np.shape(temp)[0]//2
@@ -351,18 +351,21 @@ def Compute(Constant,layers,plot=False):
 
 #####################设定光栅参数#####################################
 Constant={}
-Constant['fill_factor']=1
-grating=Triangular(4*1e-6,30,Constant['fill_factor'])
+# Constant['fill_factor']=1
+# grating=Triangular(4*1e-6,30,Constant['fill_factor'])
+grating=Rectangular(4*1e-6,0.5,2*1e-6)
+Constant['name']=grating.name
 Constant['period']=grating.T
-a,a_diff=grating.profile()
+Constant['fill_factor']=grating.fill_factor
+a=grating.profile()
 Constant['dimension']=1#光栅是一维光栅
 Constant['a']=a#光栅轮廓函数
-Constant['diff_a']=a_diff#光栅表面轮廓的导数函数
-Constant['depth']=Constant['period']/2*np.tan(np.radians(30))
+# Constant['diff_a']=a_diff#光栅表面轮廓的导数函数
+Constant['depth']=grating.depth
 ######################设定仿真层#####################################
 layers=[
     Layer(n=1,t=1*1e-6),#光栅上方的自由空间,可以理解为空气层
-    Layer(n=1.4482+7.5367j,t=1.8*1e-6,fill_factor=Constant['fill_factor']),#光栅层
+    Layer(n=1.4482+7.5367j,t=Constant['depth'],fill_factor=Constant['fill_factor']),#光栅层
     Layer(n=1.4482+7.5367j,t=4*1e-6)#光栅基底区域
     ]
 Constant['n1']=layers[0].n
@@ -374,7 +377,7 @@ thetai=np.radians(0)#入射角thetai
 phi=np.radians(0)#入射角phi
 wavelength=632.8*1e-9
 pTM=1
-pTE=1
+pTE=0
 Constant=Set_Polarization(thetai,phi,wavelength,pTM,pTE,Constant)
 m=60
 Constant['n_Tr']=2*m+1
