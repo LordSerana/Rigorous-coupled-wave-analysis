@@ -82,14 +82,14 @@ def Calculate_Poynting(Eigenvector,Eigenvalue):
     Eigenvalue=Eigenvalue[new_ind]
     Eigenvector=Eigenvector[:,new_ind]
     ###############内部排序,按照虚部的降序排序
-    # half=Eigenvalue.shape[0]//2
-    # forward=np.argsort(-Eigenvalue[:half].imag)
-    # backward=np.argsort(-abs(Eigenvalue[half:].imag))+half
-    # new_ind=np.concatenate([forward,backward])
-    # Eigenvalue=Eigenvalue[new_ind]
-    # Eigenvalue[forward]=-abs(Eigenvalue[forward].real)+1j*abs(Eigenvalue[forward].imag)
-    # Eigenvalue[backward]=abs(Eigenvalue[backward].real)-1j*abs(Eigenvalue[backward].imag)
-    # Eigenvector=Eigenvector[:,new_ind]
+    half=Eigenvalue.shape[0]//2
+    forward=np.argsort(-Eigenvalue[:half].imag)
+    backward=np.argsort(-abs(Eigenvalue[half:].imag))+half
+    new_ind=np.concatenate([forward,backward])
+    Eigenvalue=Eigenvalue[new_ind]
+    Eigenvalue[forward]=-abs(Eigenvalue[forward].real)+1j*abs(Eigenvalue[forward].imag)
+    Eigenvalue[backward]=abs(Eigenvalue[backward].real)-1j*abs(Eigenvalue[backward].imag)
+    Eigenvector=Eigenvector[:,new_ind]
     return Eigenvector,Eigenvalue
 
 def Calculate_Gap(kx,ky,Constant):
@@ -227,12 +227,12 @@ def Construct_M_matrix(layer,n,Constant):
     temp=F_series_gen(c,Constant['n_Tr'])
     c=Toeplitz(temp,Constant['n_Tr'])
     E,E_recip_inv=layer_mode(layer,Constant)
-    A=E@(s**2)+E_recip_inv@(c**2)
-    # A=s@E@s+c@E_recip_inv@c
-    B=s@E@c-c@E_recip_inv@s
-    C=c@E@s-s@E_recip_inv@c
-    D=E@(c**2)+E_recip_inv@(s**2)
-    # D=c@E@c+s@E_recip_inv@s
+    # A=E@(c**2)+E_recip_inv@(s**2)
+    A=E@c@c+E_recip_inv@s@s
+    B=E@s@c-E_recip_inv@c@s
+    C=E@c@s-E_recip_inv@s@c
+    # D=E@(s**2)+E_recip_inv@(c**2)
+    D=E@s@s+E_recip_inv@c@c
     D_inv=np.linalg.inv(D)
     I=np.eye(kx.shape[0])
     M11=-1j*kx@D_inv@C
@@ -352,7 +352,7 @@ def Compute(Constant,layers,plot=False):
 #####################设定光栅参数#####################################
 Constant={}
 # Constant['fill_factor']=1
-# grating=Triangular(4*1e-6,30,Constant['fill_factor'])
+# grating=Triangular(4*1e-6,30,1)
 grating=Rectangular(4*1e-6,0.5,2*1e-6)
 Constant['name']=grating.name
 Constant['period']=grating.T
@@ -377,7 +377,7 @@ thetai=np.radians(0)#入射角thetai
 phi=np.radians(0)#入射角phi
 wavelength=632.8*1e-9
 pTM=1
-pTE=0
+pTE=1
 Constant=Set_Polarization(thetai,phi,wavelength,pTM,pTE,Constant)
 m=60
 Constant['n_Tr']=2*m+1
@@ -397,5 +397,6 @@ Abs_error=[]
 Rela_error=[]
 #####################开始计算########################################
 Constant=Compute(Constant,layers)
-R_effi=[0.15517,0.19151,0.01522,0.00856,0.0144,0.002,0.00946,0.002,0.0144,0.00856,0.01522,0.19151,0.15517]#sum=0.78318
+# R_effi=[0.15517,0.19151,0.01522,0.00856,0.0144,0.002,0.00946,0.002,0.0144,0.00856,0.01522,0.19151,0.15517]#sum=0.78318,三角光栅,45°偏振光
+R_effi=[0.006,0.0135,0.0064,0.0551,0.0216,0.2104,0.2298,0.2104,0.0216,0.0551,0.0064,0.0135,0.006]#sum=0.8558,矩形光栅,45°偏振光
 Plot_Effi(Constant,effi=R_effi)

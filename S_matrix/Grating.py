@@ -16,10 +16,10 @@ class Triangular():
         '''
         m:快速傅里叶变换阶数
         '''
-        a_fun=lambda x:(0)*(x<((1-self.fill_factor)/2)*self.T)+(x*np.tan(self.base_angle))*((1-self.fill_factor)/2*self.T<x<=self.T/2)\
-        +(self.depth-(x-self.T/2)*np.tan(self.base_angle))*(self.T/2<x<((1-self.fill_factor)/2+self.T/2))\
-        +(0)*(x>((1-self.fill_factor)/2+self.T/2))
-        # a_fun=lambda x:(x*np.tan(self.base_angle))*(x<=self.T/2)+(self.depth-(x-self.T/2)*np.tan(self.base_angle))*(x>self.T/2)
+        # a_fun=lambda x:(0)*(x<((1-self.fill_factor)/2)*self.T)+(x*np.tan(self.base_angle))*(((1-self.fill_factor)/2*self.T)<x<=self.T/2)\
+        # +(self.depth-(x-self.T/2)*np.tan(self.base_angle))*(self.T/2<x<((1-self.fill_factor)/2+self.T/2))\
+        # +(0)*(x>((1-self.fill_factor)/2+self.T/2))
+        a_fun=lambda x:(x*np.tan(self.base_angle))*(x<=self.T/2)+(self.depth-(x-self.T/2)*np.tan(self.base_angle))*(x>self.T/2)
         # a_diff_fun=lambda x:(np.tan(self.base_angle))*(x<=self.T/2)+(-np.tan(self.base_angle))*(x>self.T/2)
         # plt.plot(x,y)
         # plt.xlabel("x")
