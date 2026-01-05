@@ -220,19 +220,21 @@ def Construct_M_matrix(layer,n,Constant):
         a_diff=np.zeros_like(a)
     else:
         a_diff=np.gradient(a,dx)
-    s=a_diff/np.sqrt(1+a_diff**2,dtype=complex)
-    temp=F_series_gen(s,Constant['n_Tr'])
-    s=Toeplitz(temp,Constant['n_Tr'])
-    c=1/np.sqrt(1+a_diff**2,dtype=complex)
-    temp=F_series_gen(c,Constant['n_Tr'])
-    c=Toeplitz(temp,Constant['n_Tr'])
+    NX=-a_diff/np.sqrt(1+a_diff**2)#为了与上面的Nx做区分,此处表示的是在x方向的偏导数
+    temp=F_series_gen(NX**2,Constant['n_Tr'])
+    NX2=Toeplitz(temp,Constant['n_Tr'])
+    NZ=1/np.sqrt(1+a_diff**2)#在z方向的偏导数
+    temp=F_series_gen(NZ**2,Constant['n_Tr'])
+    NZ2=Toeplitz(temp,Constant['n_Tr'])
+    temp=F_series_gen(NX*NZ,Constant['n_Tr'])
+    NXNZ=Toeplitz(temp,Constant['n_Tr'])
     E,E_recip_inv=layer_mode(layer,Constant)
     # A=E@(c**2)+E_recip_inv@(s**2)
-    A=E@c@c+E_recip_inv@s@s
-    B=E@s@c-E_recip_inv@c@s
-    C=E@c@s-E_recip_inv@s@c
+    A=E-(E-E_recip_inv)@NX2
+    B=-(E-E_recip_inv)@NXNZ
+    C=-(E-E_recip_inv)@NXNZ
     # D=E@(s**2)+E_recip_inv@(c**2)
-    D=E@s@s+E_recip_inv@c@c
+    D=E-(E-E_recip_inv)@NZ2
     D_inv=np.linalg.inv(D)
     I=np.eye(kx.shape[0])
     M11=-1j*kx@D_inv@C
@@ -352,8 +354,8 @@ def Compute(Constant,layers,plot=False):
 #####################设定光栅参数#####################################
 Constant={}
 # Constant['fill_factor']=1
-# grating=Triangular(4*1e-6,30,1)
-grating=Rectangular(4*1e-6,0.5,2*1e-6)
+grating=Triangular(4*1e-6,30,1)
+# grating=Rectangular(4*1e-6,0.5,2*1e-6)
 Constant['name']=grating.name
 Constant['period']=grating.T
 Constant['fill_factor']=grating.fill_factor
@@ -397,6 +399,6 @@ Abs_error=[]
 Rela_error=[]
 #####################开始计算########################################
 Constant=Compute(Constant,layers)
-# R_effi=[0.15517,0.19151,0.01522,0.00856,0.0144,0.002,0.00946,0.002,0.0144,0.00856,0.01522,0.19151,0.15517]#sum=0.78318,三角光栅,45°偏振光
-R_effi=[0.006,0.0135,0.0064,0.0551,0.0216,0.2104,0.2298,0.2104,0.0216,0.0551,0.0064,0.0135,0.006]#sum=0.8558,矩形光栅,45°偏振光
+R_effi=[0.15517,0.19151,0.01522,0.00856,0.0144,0.002,0.00946,0.002,0.0144,0.00856,0.01522,0.19151,0.15517]#sum=0.78318,三角光栅,45°偏振光
+# R_effi=[0.006,0.0135,0.0064,0.0551,0.0216,0.2104,0.2298,0.2104,0.0216,0.0551,0.0064,0.0135,0.006]#sum=0.8558,矩形光栅,45°偏振光
 Plot_Effi(Constant,effi=R_effi)
