@@ -22,9 +22,8 @@ def layer_mode(layer,Constant):
     Nx=Constant['Nx']
     m=Constant['n_Tr']//2
     epsilon=np.ones(Nx,dtype=complex)*Constant['e1']
-    temp=int(layer.fill_factor*Nx/2)
-    q0=Nx//2
-    epsilon[q0-temp:q0+temp+1]=layer.n**2
+    width=int(layer.fill_factor*Nx)
+    epsilon[:width]=layer.n**2
     epsilon_recip=1/epsilon            
     fourier_coeffi=np.fft.fftshift(np.fft.fft(epsilon,axis=0)/epsilon.shape[0])
     fourier_coeffi_recip=np.fft.fftshift(np.fft.fft(epsilon_recip,axis=0)/epsilon.shape[0])
@@ -58,7 +57,6 @@ def Set_Polarization(thetai,phi,wavelength,pTM,pTE,Constant):
 
 def CalcEffi(p,Constant,S_global):
     m=Constant['n_Tr']//2
-    block=2*m+1
     delta0=np.zeros(2*m+1)
     delta0[m]=1
     c_inc=np.concatenate((p[0]*delta0,p[1]*delta0))
@@ -349,7 +347,7 @@ def Compute(Constant,layers,plot=False):
 
 #####################设定光栅参数#####################################
 Constant={}
-grating=Rectangular(4*1e-6,0.5,2*1e-6)
+grating=Rectangular(4*1e-6,1,2*1e-6)
 # grating=Triangular(4*1e-6,30,1)
 Constant['period']=grating.T
 Constant['fill_factor']=grating.fill_factor
