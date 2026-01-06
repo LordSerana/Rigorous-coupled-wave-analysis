@@ -5,7 +5,7 @@ sys.path.append("E:/Project/Python")
 from C_Method.Toeplitze import Toeplitz
 from S_matrix.Layer import Layer
 from S_matrix.Star import Star
-# from S_matrix.CalcEffi import calcEffi
+from S_matrix.CalcEffi import calcEffi
 from S_matrix.Plot_Effi import Plot_Effi
 import matplotlib.pyplot as plt
 from S_matrix.F_series_gen import F_series_gen
@@ -77,7 +77,7 @@ def CalcEffi(p,Constant,S_global):
     Hx_trn=Trn_EM_field[2*block_size:3*block_size]
     Hy_trn=Trn_EM_field[3*block_size:]
     Sz_trn=np.real(1j*Ex_trn*np.conj(Hy_trn)-1j*Ey_trn*np.conj(Hx_trn))
-    Sz_inc=(p[0]**2+p[1]**2)*np.cos(Constant['thetai'])
+    Sz_inc=(abs(p[0]**2)+abs(p[1]**2))*np.cos(Constant['thetai'])
     # print(np.sum(abs(Ex_ref)),np.sum(abs(Ey_ref)))
     R=abs(Sz_ref)/Sz_inc
     T=Sz_trn/Sz_inc
@@ -132,22 +132,29 @@ def Calculate_Poynting(Eigenvector,Eigenvalue):
     Eigenvalue=Eigenvalue[new_ind]
     Eigenvector=Eigenvector[:,new_ind]
     ###############内部排序,按照虚部的降序排序
-    # half=Eigenvalue.shape[0]//2
-    # forward=np.argsort(-Eigenvalue[:half].imag)
-    # backward=np.argsort(-abs(Eigenvalue[half:].imag))+half
-    # new_ind=np.concatenate([forward,backward])
-    # Eigenvalue=Eigenvalue[new_ind]
-    # Eigenvalue[forward]=-abs(Eigenvalue[forward].real)+1j*abs(Eigenvalue[forward].imag)
-    # Eigenvalue[backward]=abs(Eigenvalue[backward].real)-1j*abs(Eigenvalue[backward].imag)
-    # Eigenvector=Eigenvector[:,new_ind]
+    half=Eigenvalue.shape[0]//2
+    forward=np.argsort(-Eigenvalue[:half].imag)
+    backward=np.argsort(-abs(Eigenvalue[half:].imag))+half
+    new_ind=np.concatenate([forward,backward])
+    Eigenvalue=Eigenvalue[new_ind]
+    Eigenvalue[forward]=-abs(Eigenvalue[forward].real)+1j*abs(Eigenvalue[forward].imag)
+    Eigenvalue[backward]=abs(Eigenvalue[backward].real)-1j*abs(Eigenvalue[backward].imag)
+    Eigenvector=Eigenvector[:,new_ind]
     return Eigenvector,Eigenvalue
 
-def Calculate_Gap(kx,ky,Constant):
-    I=np.eye(kx.shape[0])
+def Calculate_Gap(Constant):
+    kx=np.diag(Constant['kx'])
+    ky=np.diag(Constant['ky'])
+    kz=np.diag(Constant['kz'])
     W=np.eye(2*kx.shape[0])
-    omega=np.block([[kx@ky,I+ky@ky],[-(I+kx@kx),-kx@ky]])#到底用1还是I？用I
+    V11=np.diag(kx*ky/kz)
+    V12=np.diag((1+ky*ky)/kz)
+    V21=np.diag((-1+kx*kx)/kz)
+    V22=-V11
+    omega=np.block([[V11,V12],[V21,V22]])
+    # omega=np.block([[kx@ky/kz,I+ky@ky],[-(I+kx@kx),-kx@ky]])#到底用1还是I？用I
     V=-1j*omega
-    LAM=-1j*Constant['kz']
+    LAM=1j*Constant['kz']
     LAM=np.concatenate([LAM,LAM])
     Eigenvalue=np.concatenate([LAM,-LAM])
     Eigenvector=np.block([[W,W],[V,-V]])
@@ -264,7 +271,7 @@ def Construct_M_matrix(layer,n,Constant):
     M23=ky@E_inv@ky-I
     M24=-ky@E_inv@kx
     M31=kx@ky
-    M32=E-kx@kx
+    M32=E_recip_inv-kx@kx
     M33=np.zeros_like(M11)
     M34=np.zeros_like(M11)
     M41=ky@ky-E_recip_inv
@@ -296,7 +303,7 @@ def Compute(Constant,layers,plot=False):
     Constant['kz']=kzref
     nDim=Constant['n_Tr']
     #############计算间隙介质的散射矩阵##########
-    Constant=Calculate_Gap(kx,ky,Constant)
+    Constant=Calculate_Gap(Constant)
     V_g_E_P=Constant['V_g_E_P']
     V_g_E_N=Constant['V_g_E_N']
     V_g_H_P=Constant['V_g_H_P']
@@ -347,7 +354,7 @@ def Compute(Constant,layers,plot=False):
 
 #####################设定光栅参数#####################################
 Constant={}
-grating=Rectangular(4*1e-6,1,2*1e-6)
+grating=Rectangular(4*1e-6,0.5,2*1e-6)
 # grating=Triangular(4*1e-6,30,1)
 Constant['period']=grating.T
 Constant['fill_factor']=grating.fill_factor
@@ -361,7 +368,7 @@ Constant['depth']=grating.depth
 ######################设定仿真层#####################################
 layers=[
     Layer(n=1,t=1*1e-6),#光栅上方的自由空间,可以理解为空气层
-    Layer(n=1.4482+7.5367j,t=2*1e-6,fill_factor=Constant['fill_factor']),#光栅层
+    Layer(n=1.4482+7.5367j,t=Constant['depth'],fill_factor=Constant['fill_factor']),#光栅层
     Layer(n=1.4482+7.5367j,t=4*1e-6)#光栅基底区域
     ]
 Constant['n1']=layers[0].n
@@ -373,7 +380,7 @@ thetai=np.radians(0)#入射角thetai
 phi=np.radians(0)#入射角phi
 wavelength=632.8*1e-9
 pTM=1
-pTE=1
+pTE=0
 Constant=Set_Polarization(thetai,phi,wavelength,pTM,pTE,Constant)
 m=15
 Constant['n_Tr']=2*m+1
