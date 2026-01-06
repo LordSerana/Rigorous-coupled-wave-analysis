@@ -1,15 +1,15 @@
 import numpy as np
 import sys
 sys.path.append("E:/Project/Python")
-from S_matrix.Set_polarization import Set_Polarization
-from C_Method.Grating import Triangular
+# from S_matrix.Set_polarization import Set_Polarization
 from C_Method.Toeplitze import Toeplitz
 from S_matrix.Layer import Layer
 from S_matrix.Star import Star
-from S_matrix.CalcEffi import calcEffi
+# from S_matrix.CalcEffi import calcEffi
 from S_matrix.Plot_Effi import Plot_Effi
 import matplotlib.pyplot as plt
 from S_matrix.F_series_gen import F_series_gen
+from S_matrix.Grating import Rectangular,Triangular
 
 plt.rcParams['font.sans-serif']=['SimHei']
 plt.rcParams['axes.unicode_minus']=False#解决plt画图中文乱码问题
@@ -32,6 +32,58 @@ def layer_mode(layer,Constant):
     E_recip=Toeplitz(fourier_coeffi_recip,2*m+1)
     E_recip_inv=np.linalg.inv(E_recip)
     return E,E_recip_inv
+
+def Set_Polarization(thetai,phi,wavelength,pTM,pTE,Constant):
+    Constant['thetai']=thetai
+    Constant['phi']=phi
+    Constant['wavelength']=wavelength
+    Constant['pTM']=pTM
+    Constant['pTE']=pTE
+    k0=2*np.pi/wavelength
+    Constant['k0']=k0
+    n=[0,0,1]
+    kinc=Constant['n1']*np.array([np.sin(thetai)*np.cos(phi),np.sin(thetai)*np.sin(phi),np.cos(thetai)])
+    Constant['kinc']=kinc
+    if thetai==0:
+        aTE=[0,1,0]
+    else:
+        aTE=np.cross(n,kinc)/np.linalg.norm(np.cross(n,kinc))
+    aTM=np.cross(aTE,kinc)/np.linalg.norm(np.cross(aTE,kinc))
+    Constant['eTE']=aTE
+    Constant['eTM']=aTM
+    p=np.dot(pTE,aTE)+np.dot(pTM,aTM)
+    p=p/np.linalg.norm(p)
+    Constant['p']=p
+    return Constant
+
+def CalcEffi(p,Constant,S_global):
+    m=Constant['n_Tr']//2
+    block=2*m+1
+    delta0=np.zeros(2*m+1)
+    delta0[m]=1
+    c_inc=np.concatenate((p[0]*delta0,p[1]*delta0))
+    c_ref=S_global[:4*m+2,:4*m+2]@c_inc
+    c_trn=S_global[4*m+2:,:4*m+2]@c_inc
+    Ref_EM_field=Constant['Vref']@np.concatenate([np.zeros_like(c_ref),c_ref])
+    # Ref_EM_field=Constant['Vref']@c_ref
+    block_size=Ref_EM_field.shape[0]//4
+    Ex_ref=Ref_EM_field[:block_size]
+    Ey_ref=Ref_EM_field[block_size:2*block_size]
+    Hx_ref=Ref_EM_field[2*block_size:3*block_size]
+    Hy_ref=Ref_EM_field[3*block_size:]
+    Sz_ref=np.real(1j*Ex_ref*np.conj(Hy_ref)-1j*Ey_ref*np.conj(Hx_ref))
+    Trn_EM_field=Constant['Vtrn']@np.concatenate([c_trn,np.zeros_like(c_trn)])
+    # Trn_EM_field=Constant['Vtrn']@c_trn
+    Ex_trn=Trn_EM_field[:block_size]
+    Ey_trn=Trn_EM_field[block_size:2*block_size]
+    Hx_trn=Trn_EM_field[2*block_size:3*block_size]
+    Hy_trn=Trn_EM_field[3*block_size:]
+    Sz_trn=np.real(1j*Ex_trn*np.conj(Hy_trn)-1j*Ey_trn*np.conj(Hx_trn))
+    Sz_inc=(p[0]**2+p[1]**2)*np.cos(Constant['thetai'])
+    # print(np.sum(abs(Ex_ref)),np.sum(abs(Ey_ref)))
+    R=abs(Sz_ref)/Sz_inc
+    T=Sz_trn/Sz_inc
+    return R,T
 
 def Calculate_Poynting(Eigenvector,Eigenvalue):
     '''
@@ -97,7 +149,7 @@ def Calculate_Gap(kx,ky,Constant):
     W=np.eye(2*kx.shape[0])
     omega=np.block([[kx@ky,I+ky@ky],[-(I+kx@kx),-kx@ky]])#到底用1还是I？用I
     V=-1j*omega
-    LAM=-1j*Constant['kzref']
+    LAM=-1j*Constant['kz']
     LAM=np.concatenate([LAM,LAM])
     Eigenvalue=np.concatenate([LAM,-LAM])
     Eigenvector=np.block([[W,W],[V,-V]])
@@ -120,13 +172,14 @@ def Calculate_Ref(kx,ky,layers,Constant):
     W=np.eye(2*kx.shape[0])
     omega=np.block([[kx@ky,I+ky@ky],[-(I+kx@kx),-kx@ky]])#到底用1还是I？用I
     V=-1j*omega
-    kz=-Constant['kzref']
+    kz=Constant['kz']
     if kz.ndim==2:
         kz=np.diag(kz)
     LAM=1j*kz
     LAM=np.concatenate([LAM,LAM])
     Eigenvalue=np.concatenate([LAM,-LAM])
     Eigenvector=np.block([[W,W],[V,-V]])
+    Constant['Vref']=Eigenvector
     V_g_E_P=Constant['V_g_E_P']
     V_g_E_N=Constant['V_g_E_N']
     V_g_H_P=Constant['V_g_H_P']
@@ -151,7 +204,7 @@ def Calculate_trn(kx,ky,layers,Constant):
     I=np.eye(kx.shape[0])*Constant['e2']
     W=np.eye(2*kx.shape[0])
     omega=np.block([[kx@ky,I+ky@ky],[-(I+kx@kx),-kx@ky]])#到底用1还是I？用I
-    kz=-Constant['kzref']
+    kz=Constant['kz']
     if kz.ndim==2:
         kz=np.diag(kz)
     LAM=1j*kz
@@ -159,6 +212,7 @@ def Calculate_trn(kx,ky,layers,Constant):
     V=omega@np.linalg.inv(np.diag(LAM))
     Eigenvalue=np.concatenate([LAM,-LAM])
     Eigenvector=np.block([[W,W],[V,-V]])
+    Constant['Vtrn']=Eigenvector
     V_g_E_P=Constant['V_g_E_P']
     V_g_E_N=Constant['V_g_E_N']
     V_g_H_P=Constant['V_g_H_P']
@@ -205,18 +259,18 @@ def Construct_M_matrix(layer,n,Constant):
     zero=np.zeros((kx.shape[0],kx.shape[0]))
     M11=zero
     M12=np.zeros_like(M11)
-    M13=-kx@E_inv@ky
-    M14=I+kx@E_inv@kx
+    M13=kx@E_inv@ky
+    M14=I-kx@E_inv@kx
     M21=zero
     M22=np.zeros_like(M11)
-    M23=-(ky@E_inv@ky+I)
-    M24=ky@E_inv@kx
-    M31=-kx@ky
-    M32=kx@kx+E
+    M23=ky@E_inv@ky-I
+    M24=-ky@E_inv@kx
+    M31=kx@ky
+    M32=E-kx@kx
     M33=np.zeros_like(M11)
     M34=np.zeros_like(M11)
-    M41=-kx@ky-E
-    M42=ky@kx
+    M41=ky@ky-E_recip_inv
+    M42=-ky@kx
     M43=zero
     M44=zero
     M=np.block([[M11,M12,M13,M14],[M21,M22,M23,M24],[M31,M32,M33,M34],[M41,M42,M43,M44]])
@@ -241,7 +295,7 @@ def Compute(Constant,layers,plot=False):
         if np.imag(kz)<0:
             kz=-kz
         kzref[i,i]=kz
-    Constant['kzref']=-kzref
+    Constant['kz']=kzref
     nDim=Constant['n_Tr']
     #############计算间隙介质的散射矩阵##########
     Constant=Calculate_Gap(kx,ky,Constant)
@@ -256,7 +310,8 @@ def Compute(Constant,layers,plot=False):
     S_ref=Calculate_Ref(kx,ky,layers,Constant)
     S_global=Star(S_global,S_ref)
     ############构造4*4M矩阵####################
-    layers=Slice(Constant['n'],layers,Constant)#光栅区域切片操作
+    if Constant['name']!="Rectangular":
+        layers=Slice(Constant['n'],layers,Constant)#光栅区域切片操作
     n=1
     for i in layers[1:-1]:
         M=Construct_M_matrix(i,n,Constant)
@@ -288,23 +343,27 @@ def Compute(Constant,layers,plot=False):
         S_global=Star(S_global,S)
     S_trn=Calculate_trn(kx,ky,layers,Constant)
     S_global=Star(S_global,S_trn)
-    R_effi,T_effi=calcEffi(Constant['p'],Constant,S_global)
-    Plot_Effi(R_effi,T_effi,Constant)
+    R_effi,T_effi=CalcEffi(Constant['p'],Constant,S_global)
+    Constant['R_effi']=R_effi
+    Plot_Effi(Constant,[])
 
 #####################设定光栅参数#####################################
 Constant={}
-Constant['fill_factor']=0.5
-grating=Triangular(4*1e-6,30,Constant['fill_factor'])
+grating=Rectangular(4*1e-6,0.5,2*1e-6)
+# grating=Triangular(4*1e-6,30,1)
 Constant['period']=grating.T
-a,a_diff=grating.profile()
+Constant['fill_factor']=grating.fill_factor
+a=grating.profile()
+Constant['name']=grating.name
 Constant['dimension']=1#光栅是一维光栅
 Constant['a']=a#光栅轮廓函数
-Constant['diff_a']=a_diff#光栅表面轮廓的导数函数
-Constant['depth']=Constant['period']/2*np.tan(np.radians(30))
+# Constant['diff_a']=a_diff#光栅表面轮廓的导数函数
+# Constant['depth']=Constant['period']/2*np.tan(np.radians(30))
+Constant['depth']=grating.depth
 ######################设定仿真层#####################################
 layers=[
     Layer(n=1,t=1*1e-6),#光栅上方的自由空间,可以理解为空气层
-    Layer(n=1.4482+7.5367j,t=1.8*1e-6,fill_factor=Constant['fill_factor']),#光栅层
+    Layer(n=1.4482+7.5367j,t=2*1e-6,fill_factor=Constant['fill_factor']),#光栅层
     Layer(n=1.4482+7.5367j,t=4*1e-6)#光栅基底区域
     ]
 Constant['n1']=layers[0].n
@@ -315,7 +374,7 @@ Constant['e2']=Constant['n2']**2
 thetai=np.radians(0)#入射角thetai
 phi=np.radians(0)#入射角phi
 wavelength=632.8*1e-9
-pTM=0
+pTM=1
 pTE=1
 Constant=Set_Polarization(thetai,phi,wavelength,pTM,pTE,Constant)
 m=15
