@@ -152,7 +152,6 @@ def Calculate_Gap(Constant):
     V21=np.diag((-1+kx*kx)/kz)
     V22=-V11
     omega=np.block([[V11,V12],[V21,V22]])
-    # omega=np.block([[kx@ky/kz,I+ky@ky],[-(I+kx@kx),-kx@ky]])#到底用1还是I？用I
     V=-1j*omega
     LAM=1j*Constant['kz']
     LAM=np.concatenate([LAM,LAM])
