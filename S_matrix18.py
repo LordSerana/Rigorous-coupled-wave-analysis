@@ -171,15 +171,18 @@ def Calculate_Gap(Constant):
     Constant['V0']=V
     return Constant
 
-def Calculate_Ref(kx,ky,layers,Constant):
+def Calculate_Ref(layers,Constant):
     #按计划，使用解析式替代矩阵计算，如Calculate_Gap所做的那样
-    I=np.eye(kx.shape[0])
+    kx=np.diag(Constant['kx'])
+    ky=np.diag(Constant['ky'])
+    kz=np.diag(Constant['kz'])
     W=np.eye(2*kx.shape[0])
-    omega=np.block([[kx@ky,I+ky@ky],[-(I+kx@kx),-kx@ky]])#到底用1还是I？用I
+    V11=np.diag(kx*ky/kz)
+    V12=np.diag((1+ky*ky)/kz)
+    V21=np.diag((-1+kx*kx)/kz)
+    V22=np.diag(-kx*ky/kz)
+    omega=np.block([[V11,V12],[V21,V22]])#到底用1还是I？用I
     V=-1j*omega
-    kz=Constant['kz']
-    if kz.ndim==2:
-        kz=np.diag(kz)
     LAM=1j*kz
     LAM=np.concatenate([LAM,LAM])
     Eigenvalue=np.concatenate([LAM,-LAM])
@@ -204,17 +207,20 @@ def Calculate_Ref(kx,ky,layers,Constant):
     S_ref=np.block([[S11,S12],[S21,S22]])
     return S_ref
 
-def Calculate_trn(kx,ky,layers,Constant):
+def Calculate_trn(layers,Constant):
     ###使用解析式的形式
-    I=np.eye(kx.shape[0])*Constant['e2']
+    kx=np.diag(Constant['kx'])
+    ky=np.diag(Constant['ky'])
+    kz=np.sqrt((Constant['e2']-kx**2-ky**2).astype('complex'))
     W=np.eye(2*kx.shape[0])
-    omega=np.block([[kx@ky,I+ky@ky],[-(I+kx@kx),-kx@ky]])#到底用1还是I？用I
-    kz=Constant['kz']
-    if kz.ndim==2:
-        kz=np.diag(kz)
+    V11=np.diag(kx*ky/kz)
+    V12=np.diag((Constant['e2']+ky*ky)/kz)
+    V21=np.diag((-Constant['e2']+kx*kx)/kz)
+    V22=np.diag(-kx*ky/kz)
+    omega=np.block([[V11,V12],[V21,V22]])#到底用1还是I？用I
     LAM=1j*kz
     LAM=np.concatenate([LAM,LAM])
-    V=omega@np.linalg.inv(np.diag(LAM))
+    V=-1j*omega
     Eigenvalue=np.concatenate([LAM,-LAM])
     Eigenvector=np.block([[W,W],[V,-V]])
     Constant['Vtrn']=Eigenvector
@@ -300,7 +306,7 @@ def Compute(Constant,layers,plot=False):
         if np.imag(kz)<0:
             kz=-kz
         kzref[i,i]=kz
-    Constant['kz']=kzref
+    Constant['kz']=kzref#kz使用的是自由空间的kz
     nDim=Constant['n_Tr']
     #############计算间隙介质的散射矩阵##########
     Constant=Calculate_Gap(Constant)
@@ -312,7 +318,7 @@ def Compute(Constant,layers,plot=False):
     ##############构建全局散射矩阵#############
     zero=np.zeros((2*nDim,2*nDim))
     S_global=np.block([[zero,np.eye(2*nDim)],[np.eye(2*nDim),zero]])
-    S_ref=Calculate_Ref(kx,ky,layers,Constant)
+    S_ref=Calculate_Ref(layers,Constant)
     S_global=Star(S_global,S_ref)
     ############构造4*4M矩阵####################
     if Constant['name']!="Rectangular":
@@ -346,7 +352,7 @@ def Compute(Constant,layers,plot=False):
         S22=np.linalg.solve(A-X_P@B@D_inv@X_N@C,X_P@B@D_inv@X_N@D-B)
         S=np.block([[S11,S12],[S21,S22]])
         S_global=Star(S_global,S)
-    S_trn=Calculate_trn(kx,ky,layers,Constant)
+    S_trn=Calculate_trn(layers,Constant)
     S_global=Star(S_global,S_trn)
     R_effi,T_effi=CalcEffi(Constant['p'],Constant,S_global)
     Constant['R_effi']=R_effi
@@ -379,8 +385,8 @@ Constant['e2']=Constant['n2']**2
 thetai=np.radians(0)#入射角thetai
 phi=np.radians(0)#入射角phi
 wavelength=632.8*1e-9
-pTM=1
-pTE=0
+pTM=0
+pTE=1
 Constant=Set_Polarization(thetai,phi,wavelength,pTM,pTE,Constant)
 m=15
 Constant['n_Tr']=2*m+1
