@@ -14,7 +14,8 @@ from S_matrix.Grating import Rectangular,Triangular
 plt.rcParams['font.sans-serif']=['SimHei']
 plt.rcParams['axes.unicode_minus']=False#解决plt画图中文乱码问题
 '''
-随着切片数的增加,总体反射效率降低
+增加光栅种类,检测方法正确性
+计划新增正弦光栅
 '''
 
 def layer_mode(layer,Constant):
@@ -229,17 +230,28 @@ def Construct_M_matrix(layer,n,Constant):
     # temp2=a[1:]
     # a_diff=(temp2-temp1)/dx
     if Constant['name']=="Rectangular":
+        '''
+        对矩形光栅,其导数处处设置为无穷大,则结果正确
+        '''
         a_diff=np.zeros_like(a)
+        NX=-1*np.ones_like(a_diff)
+        NZ=np.zeros_like(a_diff)
+        temp=F_series_gen(NX**2,Constant['n_Tr'])
+        NX2=Toeplitz(temp,Constant['n_Tr'])
+        temp=F_series_gen(NZ**2,Constant['n_Tr'])
+        NZ2=Toeplitz(temp,Constant['n_Tr'])
+        temp=F_series_gen(NX*NZ,Constant['n_Tr'])
+        NXNZ=Toeplitz(temp,Constant['n_Tr'])
     else:
         a_diff=np.gradient(a,dx)
-    NX=-a_diff/np.sqrt(1+a_diff**2)#为了与上面的Nx做区分,此处表示的是在x方向的偏导数
-    temp=F_series_gen(NX**2,Constant['n_Tr'])
-    NX2=Toeplitz(temp,Constant['n_Tr'])
-    NZ=1/np.sqrt(1+a_diff**2)#在z方向的偏导数
-    temp=F_series_gen(NZ**2,Constant['n_Tr'])
-    NZ2=Toeplitz(temp,Constant['n_Tr'])
-    temp=F_series_gen(NX*NZ,Constant['n_Tr'])
-    NXNZ=Toeplitz(temp,Constant['n_Tr'])
+        NX=-a_diff/np.sqrt(1+a_diff**2)#为了与上面的Nx做区分,此处表示的是在x方向的偏导数
+        temp=F_series_gen(NX**2,Constant['n_Tr'])
+        NX2=Toeplitz(temp,Constant['n_Tr'])
+        NZ=1/np.sqrt(1+a_diff**2)#在z方向的偏导数
+        temp=F_series_gen(NZ**2,Constant['n_Tr'])
+        NZ2=Toeplitz(temp,Constant['n_Tr'])
+        temp=F_series_gen(NX*NZ,Constant['n_Tr'])
+        NXNZ=Toeplitz(temp,Constant['n_Tr'])
     E,E_recip_inv=layer_mode(layer,Constant)
     # A=E@(c**2)+E_recip_inv@(s**2)
     A=E@NZ2+E_recip_inv@NX2
@@ -366,8 +378,8 @@ def Compute(Constant,layers,plot=False):
 #####################设定光栅参数#####################################
 Constant={}
 # Constant['fill_factor']=1
-grating=Triangular(4*1e-6,30,1)
-# grating=Rectangular(4*1e-6,0.5,2*1e-6)
+# grating=Triangular(4*1e-6,30,1)
+grating=Rectangular(4*1e-6,0.5,2*1e-6)
 Constant['name']=grating.name
 Constant['period']=grating.T
 Constant['fill_factor']=grating.fill_factor
