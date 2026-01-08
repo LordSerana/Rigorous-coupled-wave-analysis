@@ -35,9 +35,28 @@ class Rectangular():
         self.depth=depth
     
     def profile(self):
-        a_fun=lambda x:(0)*(x<((1-self.fill_factor)/2)*self.T)+\
-            self.depth*((1-self.fill_factor)/2*self.T<x<=(1+self.fill_factor)/2*self.T)+\
-            (0)*(x>(1+self.fill_factor)/2*self.T)
-        
-        a_fun=lambda x:(self.depth)*(x<=self.T*self.fill_factor)+(0)*(x>self.T*self.fill_factor)
+        def a_fun(x):
+            '''
+            光栅模型居中设置
+            '''
+            x=np.mod(x,self.T)
+            x0=(1-self.fill_factor)*self.T/2
+            x1=(1+self.fill_factor)*self.T/2
+            return self.depth*((x>=x0)&(x<=x1))
+        return a_fun
+
+class Sinusoidal():
+    def __init__(self,T,fill_factor,depth):
+        self.name="Sinusoidal"
+        self.T=T
+        self.fill_factor=fill_factor
+        self.depth=depth
+    
+    def profile(self):
+        def a_fun(x):
+            '''
+            居中设置正弦光栅
+            '''
+            x=np.mod(x,self.T)
+            return self.depth*(1+np.sin(2*np.pi*(x-self.T/2)/self.T))/2
         return a_fun
