@@ -8,7 +8,7 @@ from S_matrix.Star import Star
 from S_matrix.Plot_Effi import Plot_Effi
 import matplotlib.pyplot as plt
 from S_matrix.F_series_gen import F_series_gen
-from S_matrix.CalcEffi import calcEffi
+# from S_matrix.CalcEffi import calcEffi
 from S_matrix.Grating import Rectangular,Triangular
 
 plt.rcParams['font.sans-serif']=['SimHei']
@@ -244,10 +244,19 @@ def Construct_M_matrix(layer,n,Constant):
         NXNZ=Toeplitz(temp,Constant['n_Tr'])
     else:
         a_diff=np.gradient(a,dx)
-        NX=-a_diff/np.sqrt(1+a_diff**2)#为了与上面的Nx做区分,此处表示的是在x方向的偏导数
+        # a_diff[np.where(a_diff==0)]=1
+        NX=np.zeros_like(a_diff)
+        NX[np.where(a_diff>0)]=np.sin(np.radians(30))
+        NX[np.where(a_diff<0)]=np.sin(np.radians(30))
+        NX[np.where(a_diff==0)]=1
+        # NX=-a_diff/np.sqrt(1+a_diff**2)#为了与上面的Nx做区分,此处表示的是在x方向的偏导数
         temp=F_series_gen(NX**2,Constant['n_Tr'])
         NX2=Toeplitz(temp,Constant['n_Tr'])
-        NZ=1/np.sqrt(1+a_diff**2)#在z方向的偏导数
+        NZ=np.zeros_like(a_diff)
+        NZ[np.where(a_diff>0)]=-np.cos(np.radians(30))
+        NZ[np.where(a_diff<0)]=np.cos(np.radians(30))
+        NZ[np.where(a_diff==0)]=0
+        # NZ=1/np.sqrt(1+a_diff**2)#在z方向的偏导数
         temp=F_series_gen(NZ**2,Constant['n_Tr'])
         NZ2=Toeplitz(temp,Constant['n_Tr'])
         temp=F_series_gen(NX*NZ,Constant['n_Tr'])
@@ -345,6 +354,7 @@ def Compute(Constant,layers,plot=False):
     for i in layers[1:-1]:
         M=Construct_M_matrix(i,n,Constant)
         n+=1
+        print("正在计算第{}层".format(n))
         #########计算EigenVector和Eigenvalue，并进行排序
         LAM,W=np.linalg.eig(M)
         Eigenvector,Eigenvalue=Calculate_Poynting(W,LAM)
@@ -405,9 +415,9 @@ wavelength=632.8*1e-9
 pTM=1
 pTE=1
 Constant=Set_Polarization(thetai,phi,wavelength,pTM,pTE,Constant)
-m=60
+m=120
 Constant['n_Tr']=2*m+1
-Constant['n']=40#切片数
+Constant['n']=20#切片数
 Constant['mx']=np.arange(-(Constant['n_Tr']//2),Constant['n_Tr']//2+1)
 Constant['my']=np.arange(-(Constant['n_Tr']//2),Constant['n_Tr']//2+1)
 Nx=max(2**10,16*Constant['n_Tr'])
@@ -423,6 +433,6 @@ Abs_error=[]
 Rela_error=[]
 #####################开始计算########################################
 Constant=Compute(Constant,layers)
-R_effi=[0.15517,0.19151,0.01522,0.00856,0.0144,0.002,0.00946,0.002,0.0144,0.00856,0.01522,0.19151,0.15517]#sum=0.78318,三角光栅,45°偏振光
-# R_effi=[0.006,0.0135,0.0064,0.0551,0.0216,0.2104,0.2298,0.2104,0.0216,0.0551,0.0064,0.0135,0.006]#sum=0.8558,矩形光栅,45°偏振光
-Plot_Effi(Constant,effi=R_effi)
+# R_effi=[0.15517,0.19151,0.01522,0.00856,0.0144,0.002,0.00946,0.002,0.0144,0.00856,0.01522,0.19151,0.15517]#sum=0.78318,三角光栅,45°偏振光
+R_effi=[0.006,0.0135,0.0064,0.0551,0.0216,0.2104,0.2298,0.2104,0.0216,0.0551,0.0064,0.0135,0.006]#sum=0.8558,矩形光栅,45°偏振光
+Plot_Effi(Constant,effi=R_effi,error=True)
