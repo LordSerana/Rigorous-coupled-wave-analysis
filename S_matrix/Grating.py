@@ -16,11 +16,17 @@ class Triangular():
         '''
         m:快速傅里叶变换阶数
         '''
-        # a_fun=lambda x:(0)*(x<((1-self.fill_factor)/2)*self.T)+(x*np.tan(self.base_angle))*(((1-self.fill_factor)/2*self.T)<x<=self.T/2)\
-        # +(self.depth-(x-self.T/2)*np.tan(self.base_angle))*(self.T/2<x<((1-self.fill_factor)/2+self.T/2))\
-        # +(0)*(x>((1-self.fill_factor)/2+self.T/2))
-        a_fun=lambda x:(x*np.tan(self.base_angle))*(x<=self.T/2)+(self.depth-(x-self.T/2)*np.tan(self.base_angle))*(x>self.T/2)
-        # a_diff_fun=lambda x:(np.tan(self.base_angle))*(x<=self.T/2)+(-np.tan(self.base_angle))*(x>self.T/2)
+        def a_fun(x):
+            x=np.mod(x,self.T)
+            x0=(1-self.fill_factor)*self.T/2
+            x1=(1+self.fill_factor)*self.T/2
+            xc=(x0+x1)/2
+            w=(x1-x0)/2
+            h=np.zeros_like(x)
+            mask=(x>=x0)&(x<=x1)
+            h[mask]=self.depth*(1-np.abs(x[mask]-xc)/w)
+            return h
+        # a_fun=lambda x:(x*np.tan(self.base_angle))*(x<=self.T/2)+(self.depth-(x-self.T/2)*np.tan(self.base_angle))*(x>self.T/2)
         # plt.plot(x,y)
         # plt.xlabel("x")
         # plt.ylabel("Grating profile")
