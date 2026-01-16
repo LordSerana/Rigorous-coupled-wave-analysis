@@ -23,3 +23,24 @@ class Triangular():
         # plt.ylabel("Grating profile")
         # plt.show()
         return a_fun,a_diff_fun
+
+class Blazed():
+    def __init__(self,T,angle,fill_factor,n):
+        '''
+        n:闪耀光栅的反射面在周期内的比例
+        '''
+        self.name="Blazed"
+        self.T=T
+        self.angle=np.radians(angle)
+        self.fill_factor=fill_factor
+        self.n=n
+        self.depth=self.T*self.fill_factor*self.n*np.tan(self.angle)
+    
+    def profile(self):
+        def a_fun(x):
+            x=np.mod(x,self.T)
+            x1=self.T*self.fill_factor*self.n
+            x2=self.T*self.fill_factor
+            temp=np.tan(self.angle)
+            return temp*x*(x<x1)+((x2-x)*self.depth/(x2-x1)*((x>=x1)&(x<x2)))
+        return a_fun

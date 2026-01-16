@@ -13,7 +13,7 @@ plt.rcParams['axes.unicode_minus']=False#解决plt画图中文乱码问题
 ##################设定仿真常数区域##########################################
 Constant={}
 n1=1
-n2=2.418+2.988j
+n2=1.4482+7.5367j
 Constant['n1']=n1
 Constant['n2']=n2
 Constant['thetai']=np.radians(1e-4)
@@ -28,7 +28,7 @@ R_effi=[]
 ##########################################################################
 
 ##########以下为三角光栅常数设定##############
-base_angle=33
+base_angle=30
 grating=Triangular(4*1e-6,base_angle,1)
 a,a_diff=grating.profile()
 Constant['a']=a#光栅表面轮廓函数
@@ -36,7 +36,7 @@ Constant['diff_a']=a_diff#光栅表面轮廓的导数
 #############################################
 
 ##########任意偏振态,为TE、TM偏振态的组合###############################
-alpha=90
+alpha=45
 alpha=np.radians(alpha)
 a=np.cos(alpha)#TM模式的分量
 b=np.sin(alpha)#TE模式的分量
@@ -51,7 +51,7 @@ if a==0:
 if b==0:
     etaR_TE=np.zeros_like(etaR_TM)
 polar=a**2*etaR_TM+b**2*etaR_TE
-
+######################################################################
 real_Ray1_idx=Constant['real_Ray1_idx']
 x=np.linspace(min(real_Ray1_idx),max(real_Ray1_idx),max(real_Ray1_idx)-min(real_Ray1_idx)+1,dtype=int)
 plt.plot(x,polar,label='Reflection')
