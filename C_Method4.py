@@ -9,10 +9,6 @@ from C_Method.Eigen import Eigen
 from C_Method.SortEigenValue import SortEigenvalueChand
 from C_Method.GenerateGFields import GenerateGFieldsChand
 from C_Method.Plot_intensity import Plot_intensity
-'''
-采用封装式的代码结构
-此文件就是main文件
-'''
 
 plt.rcParams['font.sans-serif']=['SimHei']
 plt.rcParams['axes.unicode_minus']=False#解决plt画图中文乱码问题
@@ -104,6 +100,7 @@ Constant['n2']=n2
 Constant['thetai']=np.radians(1e-4)
 Constant['n_Tr']=2*40+1
 Constant['wavelength']=632.8*1e-9
+Constant['k0']=2*np.pi/Constant['wavelength']
 #set Accuracy
 Constant['cut']=0#是否对变换后的傅里叶级数进行去除小数处理
 Constant['accuracy']=1e-9
@@ -115,9 +112,9 @@ R_effi=[]
 grating=Triangular(4*1e-6,30,1)
 Constant['period']=grating.T
 a=grating.profile()
-x=np.linspace(0,Constant['period'],2**10)
-Constant['a']=a(x)#光栅表面轮廓函数
-a_diff=np.gradient(Constant['a'],Constant['period']/2**10)
+x=np.linspace(0,Constant['period']*Constant['k0'],2**10)
+Constant['a']=Constant['k0']*a(x/Constant['k0'])#光栅表面轮廓函数
+a_diff=np.gradient(Constant['a'],Constant['period']*Constant['k0']/2**10)
 #############################################
 
 ##########任意偏振态,为TE、TM偏振态的组合###############################

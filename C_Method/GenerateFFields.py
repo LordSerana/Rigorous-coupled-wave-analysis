@@ -1,5 +1,7 @@
 import numpy as np
-from F_series_gen import F_series_gen
+import sys
+sys.path.append("E:/Project/Python")
+from C_Method.F_series_gen import F_series_gen
 
 def GenerateFFieldsChand(a_fun,b0,nDim,k0,d,m1,m2,real_Ray2_idx,real_Ray1_idx,SB1,SB2):
     LP_fun=lambda x:np.exp(-1j*b0*a_fun(x))#define fourier transform argument for positive fields

@@ -19,7 +19,7 @@ Constant['n2']=n2
 Constant['thetai']=np.radians(1e-4)
 Constant['n_Tr']=2*40+1
 Constant['wavelength']=632.8*1e-9
-Constant['gx']=4.018*1e-6#结构x方向上的周期
+Constant['gx']=4*1e-6#结构x方向上的周期
 #set Accuracy
 Constant['cut']=0#是否对变换后的傅里叶级数进行去除小数处理
 Constant['accuracy']=1e-9
