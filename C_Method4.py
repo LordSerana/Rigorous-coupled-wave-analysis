@@ -91,6 +91,23 @@ def Compute(n1,n2,polar,Constant):
     etaT=etaT.flatten()
     return etaR,etaT
 
+def Roughness(a_func,Ra=0.0,seed=None):
+    '''
+    为原始光栅轮廓函数附加粗糙度
+    参数:
+    a_func:原始轮廓函数
+    Ra:粗糙度幅度,使用μm作为单位
+    seed:随机种子
+    '''
+    if seed is not None:
+        np.random.seed(seed)
+    required_std=Ra/np.sqrt(2/np.pi)
+    if Ra>0:
+        noise=np.random.normal(0,required_std)
+        return a_func+noise
+    else:
+        return a_func
+    
 ##################设定仿真常数区域##########################################
 Constant={}
 n1=1
@@ -112,8 +129,8 @@ R_effi=[]
 grating=Triangular(4*1e-6,30,1)
 Constant['period']=grating.T
 a=grating.profile()
-x=np.linspace(0,Constant['period']*Constant['k0'],2**10)
-Constant['a']=Constant['k0']*a(x/Constant['k0'])#光栅表面轮廓函数
+x=np.linspace(0,Constant['period'],2**10)
+Constant['a']=Constant['k0']*a(x)#光栅表面轮廓函数
 a_diff=np.gradient(Constant['a'],Constant['period']*Constant['k0']/2**10)
 #############################################
 

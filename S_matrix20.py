@@ -388,8 +388,8 @@ def Compute(Constant,layers,plot=False):
 #####################设定光栅参数#####################################
 Constant={}
 # Constant['fill_factor']=1
-# grating=Triangular(4*1e-6,30,1)
-grating=Rectangular(4*1e-6,0.5,2*1e-6)
+grating=Triangular(4*1e-6,30,1)
+# grating=Rectangular(4*1e-6,0.5,2*1e-6)
 Constant['name']=grating.name
 Constant['period']=grating.T
 Constant['fill_factor']=grating.fill_factor
@@ -433,6 +433,6 @@ Abs_error=[]
 Rela_error=[]
 #####################开始计算########################################
 Constant=Compute(Constant,layers)
-# R_effi=[0.15517,0.19151,0.01522,0.00856,0.0144,0.002,0.00946,0.002,0.0144,0.00856,0.01522,0.19151,0.15517]#sum=0.78318,三角光栅,45°偏振光
-R_effi=[0.006,0.0135,0.0064,0.0551,0.0216,0.2104,0.2298,0.2104,0.0216,0.0551,0.0064,0.0135,0.006]#sum=0.8558,矩形光栅,45°偏振光
+R_effi=[0.15517,0.19151,0.01522,0.00856,0.0144,0.002,0.00946,0.002,0.0144,0.00856,0.01522,0.19151,0.15517]#sum=0.78318,三角光栅,45°偏振光
+# R_effi=[0.006,0.0135,0.0064,0.0551,0.0216,0.2104,0.2298,0.2104,0.0216,0.0551,0.0064,0.0135,0.006]#sum=0.8558,矩形光栅,45°偏振光
 Plot_Effi(Constant,effi=R_effi,error=True)
