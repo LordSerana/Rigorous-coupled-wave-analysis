@@ -1,6 +1,6 @@
 import matplotlib.pyplot as plt
 import numpy as np
-from S_matrix.Grating import Triangular
+from S_matrix.Grating import Triangular,Sinusoidal,Blazed
 from C_Method.SetConstantByPolar import setConstanByPola
 import math
 from S_matrix.F_series_gen import F_series_gen
@@ -9,6 +9,7 @@ from C_Method.Eigen import Eigen
 from C_Method.SortEigenValue import SortEigenvalueChand
 from C_Method.GenerateGFields import GenerateGFieldsChand
 from C_Method.Plot_intensity import Plot_intensity
+from C_Method.Plot_Effi import Plot_Effi
 
 plt.rcParams['font.sans-serif']=['SimHei']
 plt.rcParams['axes.unicode_minus']=False#解决plt画图中文乱码问题
@@ -103,7 +104,7 @@ def Roughness(a_func,Ra=0.0,seed=None):
         np.random.seed(seed)
     required_std=Ra/np.sqrt(2/np.pi)
     if Ra>0:
-        noise=np.random.normal(0,required_std)
+        noise=np.random.normal(0,required_std,size=a_func.shape)
         return a_func+noise
     else:
         return a_func
@@ -127,10 +128,13 @@ R_effi=[]
 
 ##########以下为光栅常数设定##############
 grating=Triangular(4*1e-6,30,1)
+# grating=Sinusoidal(4*1e-6,1,2*1e-6)
+# grating=Blazed(4*1e-6,30,1,0.8)
 Constant['period']=grating.T
 a=grating.profile()
 x=np.linspace(0,Constant['period'],2**10)
 Constant['a']=Constant['k0']*a(x)#光栅表面轮廓函数
+# Constant['a']=Constant['k0']*Roughness(a(x),0.05,42)
 a_diff=np.gradient(Constant['a'],Constant['period']*Constant['k0']/2**10)
 #############################################
 
@@ -150,13 +154,16 @@ if a==0:
 if b==0:
     etaR_TE=np.zeros_like(etaR_TM)
 polar=a**2*etaR_TM+b**2*etaR_TE
+Constant['R_effi']=polar
 ######################################################################
 real_Ray1_idx=Constant['real_Ray1_idx']
-x=np.linspace(min(real_Ray1_idx),max(real_Ray1_idx),max(real_Ray1_idx)-min(real_Ray1_idx)+1,dtype=int)
-plt.plot(x,polar,label='Reflection')
-plt.legend()
-plt.xlabel("Diffraction order")
-plt.ylabel("Diffraction efficiency")
-plt.show()
-print(polar)
-print("sum:"+str(sum(polar)))
+R_effi=[0.15517,0.19151,0.01522,0.00856,0.0144,0.002,0.00946,0.002,0.0144,0.00856,0.01522,0.19151,0.15517]#sum=0.78318,三角光栅,45°偏振光
+# x=np.linspace(min(real_Ray1_idx),max(real_Ray1_idx),max(real_Ray1_idx)-min(real_Ray1_idx)+1,dtype=int)
+# plt.plot(x,polar,label='Reflection')
+# plt.legend()
+# plt.xlabel("Diffraction order")
+# plt.ylabel("Diffraction efficiency")
+# plt.show()
+# print(polar)
+# print("sum:"+str(sum(polar)))
+Plot_Effi(Constant,R_effi,True)
