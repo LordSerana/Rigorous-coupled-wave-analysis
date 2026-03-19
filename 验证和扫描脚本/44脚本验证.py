@@ -10,6 +10,7 @@ import matplotlib.pyplot as plt
 from S_matrix.F_series_gen import F_series_gen
 # from S_matrix.CalcEffi import calcEffi
 from S_matrix.Grating import Rectangular,Triangular
+from openpyxl import load_workbook
 
 plt.rcParams['font.sans-serif']=['SimHei']
 plt.rcParams['axes.unicode_minus']=False#解决plt画图中文乱码问题
@@ -381,8 +382,13 @@ def Compute(Constant,layers,plot=False):
     S_trn=Calculate_trn(layers,Constant)
     S_global=Star(S_global,S_trn)
     R_effi,T_effi=CalcEffi(Constant['p'],Constant,S_global)
-    Constant['R_effi']=R_effi
-    Constant['T_effi']=T_effi
+    real_mask=np.abs(np.imag(np.diag(Constant['kz'])))<Constant['accuracy']
+    real_set=Constant['mx'][real_mask]
+    real_set_ind=np.where(real_mask)
+    Constant['real_set']=real_set
+    Constant['real_set_ind']=real_set_ind
+    Constant['R_effi']=R_effi[real_set_ind]
+    Constant['T_effi']=T_effi[real_set_ind]
     return Constant
 
 #####################设定光栅参数#####################################
@@ -401,8 +407,8 @@ Constant['depth']=grating.depth
 ######################设定仿真层#####################################
 layers=[
     Layer(n=1,t=1*1e-6),#光栅上方的自由空间,可以理解为空气层
-    Layer(n=1.4482+7.5367j,t=Constant['depth'],fill_factor=Constant['fill_factor']),#光栅层
-    Layer(n=1.4482+7.5367j,t=4*1e-6)#光栅基底区域
+    Layer(n=1.02+6.4371j,t=Constant['depth'],fill_factor=Constant['fill_factor']),#光栅层
+    Layer(n=1.02+6.4371j,t=4*1e-6)#光栅基底区域
     ]
 Constant['n1']=layers[0].n
 Constant['e1']=Constant['n1']**2
@@ -415,7 +421,7 @@ wavelength=632.8*1e-9
 pTM=0
 pTE=1
 Constant=Set_Polarization(thetai,phi,wavelength,pTM,pTE,Constant)
-m=120
+m=60
 Constant['n_Tr']=2*m+1
 Constant['n']=20#切片数
 Constant['mx']=np.arange(-(Constant['n_Tr']//2),Constant['n_Tr']//2+1)
@@ -431,16 +437,22 @@ Constant['u0']=4*np.pi*1e-7
 # R_effi=[]
 Abs_error=[]
 Rela_error=[]
-#####################开始计算########################################
-Constant=Compute(Constant,layers)
-real_mask=np.abs(np.imag(np.diag(Constant['kz'])))<Constant['accuracy']
-real_set=Constant['mx'][real_mask]
-real_set_ind=np.where(real_mask)
-Constant['real_set']=real_set
-Constant['real_set_ind']=real_set_ind
-R_effi=Constant['R_effi'][real_set_ind]
-temp=np.where(Constant['real_set']==0)[0][0]#0级光在R_effi中的位置
-R5=R_effi[temp-5]
+#####################开始计算,以及数据输出########################################
+file_path='C:/Users/123/Desktop/44矩阵形式验证.xlsx'
+wb=load_workbook(file_path)
+ws=wb.active
+start_row=2
+start_col=4
+for lam in range(300,701,1):
+    Constant=Set_Polarization(thetai,phi,lam*1e-9,pTM,pTE,Constant)
+    Constant=Compute(Constant,layers)
+    print("当前波长为{}".format(lam))
+    R_effi=Constant['R_effi']
+    temp=np.where(Constant['real_set']==0)[0][0]#0级光在R_effi中的位置
+    R4=R_effi[temp-4]
+    ws.cell(row=start_row,column=start_col,value=R4)
+    start_row+=1
+wb.save(file_path)
 # R_effi=[0.15517,0.19151,0.01522,0.00856,0.0144,0.002,0.00946,0.002,0.0144,0.00856,0.01522,0.19151,0.15517]#sum=0.78318,三角光栅,45°偏振光
 # R_effi=[0.006,0.0135,0.0064,0.0551,0.0216,0.2104,0.2298,0.2104,0.0216,0.0551,0.0064,0.0135,0.006]#sum=0.8558,矩形光栅,45°偏振光
-Plot_Effi(Constant,effi=[])
+# Plot_Effi(Constant,effi=R_effi,error=True)

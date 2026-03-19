@@ -1,13 +1,15 @@
 import numpy as np
 import math
-from SetConstantByPolar import setConstanByPola
-from F_series_gen import F_series_gen
-from Toeplitze import Toeplitz
-from Eigen import Eigen
-from SortEigenValue import SortEigenvalueChand
-from GenerateFFields import GenerateFFieldsChand
-from GenerateGFields import GenerateGFieldsChand
-from Plot_intensity import Plot_intensity
+import sys
+sys.path.append('E:/Project/python')
+from C_Method.SetConstantByPolar import setConstanByPola
+from C_Method.F_series_gen import F_series_gen
+from C_Method.Toeplitze import Toeplitz
+from C_Method.Eigen import Eigen
+from C_Method.SortEigenValue import SortEigenvalueChand
+from C_Method.GenerateFFields import GenerateFFieldsChand
+from C_Method.GenerateGFields import GenerateGFieldsChand
+from C_Method.Plot_intensity import Plot_intensity
 
 def Compute(n1,n2,polar,Constant):
     Constant=setConstanByPola(n1,n2,polar,Constant)
@@ -17,9 +19,11 @@ def Compute(n1,n2,polar,Constant):
     K=2*np.pi/Constant['gx']#倒易空间矢量
     nDim=Constant['n_Tr']#计算所用的总模数
     alpha0=Constant['n1']*k0*np.sin(Constant['thetai'])
-    m1=int(-math.floor(alpha0/K)-(nDim-1)/2)
-    m2=int(-math.floor(alpha0/K)+(nDim-1)/2)
-    nDim=m2-m1+1
+    # m1=int(-math.floor(alpha0/K)-(nDim-1)/2)
+    # m2=int(-math.floor(alpha0/K)+(nDim-1)/2)
+    # nDim=m2-m1+1
+    m1=int(-(nDim-1)/2)
+    m2=int((nDim-1)/2)
     A=(alpha0*np.ones((1,m2-m1+1))+K*np.linspace(m1,m2,nDim))/k0#文献中的alpham
     A=A.flatten()
     B1=Constant['n1']**2-A*A#beta1**2

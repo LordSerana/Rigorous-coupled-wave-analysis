@@ -1,7 +1,9 @@
 import numpy as np
-from Set_polarization import Set_Polarization
-from Layer import Layer
-from Compute import Compute
+import sys
+sys.path.append('E:/Project/python')
+from S_matrix.Set_polarization import Set_Polarization
+from S_matrix.Layer import Layer
+from S_matrix.Compute import Compute
 import matplotlib.pyplot as plt
 from openpyxl import load_workbook
 
@@ -19,13 +21,13 @@ Constant['e1']=Constant['n1']**2
 Constant['n2']=layers[-1].n
 Constant['e2']=Constant['n2']**2
 ###########################设定仿真常数################################
-thetai=np.radians(0)#入射角thetai
+thetai=np.radians(10)#入射角thetai
 phi=np.radians(0)#入射角phi
 wavelength=632.8*1e-9
-pTM=1
-pTE=0
+pTM=0
+pTE=1
 Constant=Set_Polarization(thetai,phi,wavelength,pTM,pTE,Constant)
-m=30
+m=100
 Constant['n_Tr']=2*m+1
 Constant['mx']=np.arange(-(Constant['n_Tr']//2),Constant['n_Tr']//2+1)
 Constant['my']=np.arange(-(Constant['n_Tr']//2),Constant['n_Tr']//2+1)
@@ -37,20 +39,22 @@ R_effi=[]
 Abs_error=[]
 Rela_error=[]
 ########################数据的输出######################################
-Constant=Compute(Constant,layers,True)
-R_effi=Constant['R_effi']
-# file_path='C:/Users/123/Desktop/仿真对比数据.xlsx'
-# wb=load_workbook(file_path)
-# ws=wb.active
-# start_row=2
-# for wavelength in range(300,701,1):
-#     Constant=Set_Polarization(thetai,phi,wavelength*1e-9,0,1,Constant)
-#     Constant=Compute(Constant,layers,False)
-#     R_effi=Constant['R_effi']
-#     temp=np.where(Constant['real_set']==0)[0][0]#0级光在R_effi中的位置
-#     R0=R_effi[temp]
-#     R1=R_effi[temp+1]
-#     ws[f'D{start_row}']=R0
-#     ws[f'E{start_row}']=R1
-#     start_row+=1
-# wb.save(file_path)
+# Constant=Compute(Constant,layers,True)
+# R_effi=Constant['R_effi']
+file_path='C:/Users/123/Desktop/矩形01仿真对比数据.xlsx'
+wb=load_workbook(file_path)
+ws=wb.active
+start_row=2
+start_col=7
+for lam in range(300,701,1):
+    Constant=Set_Polarization(thetai,phi,lam*1e-9,pTM,pTE,Constant)
+    Constant=Compute(Constant,layers,False)
+    R_effi=Constant['R_effi']
+    temp=np.where(Constant['real_set']==0)[0][0]#0级光在R_effi中的位置
+    R1=R_effi[temp+1]
+    # R0=R_effi[temp]
+    ws.cell(row=start_row,column=start_col,value=R1)
+    print("当前波长为{}".format(lam))
+    # ws[f'C{start_row}']=R1
+    start_row+=1
+wb.save(file_path)

@@ -1,5 +1,5 @@
 import numpy as np
-from Block_matrix import block_matrix
+from S_matrix.Block_matrix import block_matrix
 
 def build_scatter_from_AB(A,B):
     half=A.shape[0]//2

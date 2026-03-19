@@ -1,15 +1,18 @@
 import numpy as np
-from Toeplitz import Toeplitz
+import sys
+sys.path.append('E:/Project/python')
+from S_matrix.Toeplitz import Toeplitz
+from S_matrix.Calculate_Poynting import Calculate_Poynting
 
 def layer_mode(layer,Constant,case='FFT'):
     #####从介电常数序列计算Toeplitze矩阵
     Nx=Constant['Nx']
     m=Constant['n_Tr']//2
     if case=='FFT':
-        epsilon=np.ones(Nx,dtype=complex)*layer.n**2
+        epsilon=np.ones(Nx,dtype=complex)
         temp=int(layer.fill_factor*Nx/2)
         q0=int(Nx/2)
-        epsilon[q0-temp:q0+temp+1]=Constant['n1']**2
+        epsilon[q0-temp:q0+temp+1]=layer.n**2
         epsilon_recip=1/epsilon            
         fourier_coeffi=np.fft.fftshift(np.fft.fft(epsilon,axis=0)/epsilon.shape[0])
         fourier_coeffi_recip=np.fft.fftshift(np.fft.fft(epsilon_recip,axis=0)/epsilon.shape[0])
@@ -38,10 +41,9 @@ def layer_mode(layer,Constant,case='FFT'):
     Q=np.block([[kx@ky,E-kx@kx],[ky@ky-E_recip_inv,-ky@kx]])
     omiga2=P@Q
     LAM2,W=np.linalg.eig(omiga2)
+    # Eigenvector,Eigenvalue=Calculate_Poynting(W,LAM2)
     LAM=np.sqrt(LAM2,dtype=complex)
     LAM = -np.abs(LAM.real) + 1j*np.abs(LAM.imag)
-    #验证模态长度
-    temp=LAM.real**2+LAM.imag**2
     V=Q@W@np.diag(1/LAM)
     X=np.exp(LAM*Constant['k0']*layer.t)
     X=np.diag(X)

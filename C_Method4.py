@@ -52,9 +52,11 @@ def Compute(n1,n2,polar,Constant):
     K=2*np.pi/Constant['period']#倒易空间矢量
     nDim=Constant['n_Tr']#计算所用的总模数
     alpha0=Constant['n1']*k0*np.sin(Constant['thetai'])
-    m1=int(-math.floor(alpha0/K)-(nDim-1)/2)
-    m2=int(-math.floor(alpha0/K)+(nDim-1)/2)
-    nDim=m2-m1+1
+    # m1=int(-math.floor(alpha0/K)-(nDim-1)/2)
+    # m2=int(-math.floor(alpha0/K)+(nDim-1)/2)
+    m1=int(-(nDim-1)/2)
+    m2=int((nDim-1)/2)
+    # nDim=m2-m1+1
     A=(alpha0*np.ones((1,m2-m1+1))+K*np.linspace(m1,m2,nDim))/k0#文献中的alpham
     A=A.flatten()
     B1=Constant['n1']**2-A*A#beta1**2
@@ -112,12 +114,12 @@ def Roughness(a_func,Ra=0.0,seed=None):
 ##################设定仿真常数区域##########################################
 Constant={}
 n1=1
-n2=1.4482+7.5367j
+n2=1.02+6.4371j
 Constant['n1']=n1
 Constant['n2']=n2
-Constant['thetai']=np.radians(1e-4)
+Constant['thetai']=np.radians(-10)
 Constant['n_Tr']=2*40+1
-Constant['wavelength']=632.8*1e-9
+Constant['wavelength']=633*1e-9
 Constant['k0']=2*np.pi/Constant['wavelength']
 #set Accuracy
 Constant['cut']=0#是否对变换后的傅里叶级数进行去除小数处理
@@ -127,7 +129,7 @@ R_effi=[]
 ##########################################################################
 
 ##########以下为光栅常数设定##############
-grating=Triangular(4*1e-6,30,1)
+grating=Triangular(4*1e-6,25,1)
 # grating=Sinusoidal(4*1e-6,1,2*1e-6)
 # grating=Blazed(4*1e-6,30,1,0.8)
 Constant['period']=grating.T
@@ -139,7 +141,7 @@ a_diff=np.gradient(Constant['a'],Constant['period']*Constant['k0']/2**10)
 #############################################
 
 ##########任意偏振态,为TE、TM偏振态的组合###############################
-alpha=45
+alpha=90
 alpha=np.radians(alpha)
 a=np.cos(alpha)#TM模式的分量
 b=np.sin(alpha)#TE模式的分量
@@ -157,7 +159,7 @@ polar=a**2*etaR_TM+b**2*etaR_TE
 Constant['R_effi']=polar
 ######################################################################
 real_Ray1_idx=Constant['real_Ray1_idx']
-R_effi=[0.15517,0.19151,0.01522,0.00856,0.0144,0.002,0.00946,0.002,0.0144,0.00856,0.01522,0.19151,0.15517]#sum=0.78318,三角光栅,45°偏振光
+# R_effi=[0.15517,0.19151,0.01522,0.00856,0.0144,0.002,0.00946,0.002,0.0144,0.00856,0.01522,0.19151,0.15517]#sum=0.78318,三角光栅,45°偏振光
 # x=np.linspace(min(real_Ray1_idx),max(real_Ray1_idx),max(real_Ray1_idx)-min(real_Ray1_idx)+1,dtype=int)
 # plt.plot(x,polar,label='Reflection')
 # plt.legend()
@@ -166,4 +168,4 @@ R_effi=[0.15517,0.19151,0.01522,0.00856,0.0144,0.002,0.00946,0.002,0.0144,0.0085
 # plt.show()
 # print(polar)
 # print("sum:"+str(sum(polar)))
-Plot_Effi(Constant,R_effi,True)
+Plot_Effi(Constant,[],False)

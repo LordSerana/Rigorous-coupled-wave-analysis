@@ -3,7 +3,6 @@ import numpy as np
 def F_series_gen(array,nDim,cut_small=True):
     fourier_coeffi=np.fft.fftshift(np.fft.fft(array)/array.shape[0])
     N=len(array)
-    # fourier_coeffi=np.fft.fft(array)
     tol=1e-9
     if cut_small==True:
         ind_small_real=(np.abs(np.real(fourier_coeffi))<tol)
