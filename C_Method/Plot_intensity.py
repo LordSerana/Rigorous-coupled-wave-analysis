@@ -10,7 +10,7 @@ def Plot_intensity(Constant,RVec,real_Ray1_idx,real_Ray2_idx,B1,B2,m1,b0,nDim,pl
     '''
     #calculate reflected order
     etaR=np.zeros((1,len(real_Ray1_idx)),dtype=float)
-    etaT=np.zeros((1,len(real_Ray1_idx)),dtype=float)
+    etaT=np.zeros((1,len(real_Ray2_idx)),dtype=float)
     for i in range(min(real_Ray1_idx),max(real_Ray1_idx)+1):
         idx_etaR=i-min(real_Ray1_idx)
         idx_B1=i-m1

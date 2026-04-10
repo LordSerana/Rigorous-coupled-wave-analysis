@@ -53,6 +53,11 @@ class Rectangular():
 
 class Sinusoidal():
     def __init__(self,T,fill_factor,depth):
+        '''
+        T:光栅周期;
+        fill_factor:占空比;
+        depth:深度
+        '''
         self.name="Sinusoidal"
         self.T=T
         self.fill_factor=fill_factor
@@ -64,7 +69,7 @@ class Sinusoidal():
             居中设置正弦光栅
             '''
             x=np.mod(x,self.T)
-            return self.depth*(1+np.sin(2*np.pi*(x-self.T/2)/self.T))/2
+            return self.depth/2*(1+np.sin(2*np.pi/self.T*x))
         return a_fun
 
 class Blazed():

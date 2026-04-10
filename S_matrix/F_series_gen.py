@@ -1,4 +1,5 @@
 import numpy as np
+import matplotlib.pyplot as plt
 
 def F_series_gen(array,nDim,cut_small=True):
     fourier_coeffi=np.fft.fftshift(np.fft.fft(array)/array.shape[0])

@@ -1,11 +1,15 @@
 import numpy as np
 import matplotlib.pyplot as plt
+import sys
+sys.path.append('E:/Project/python')
+from S_matrix.Calculate_diffraction_angle import Calculate_diffraction_angle
 
 plt.style.use('seaborn-v0_8')
 plt.rcParams['font.sans-serif']=['SimHei','Arial Unicode MS','DejaVu Sans']
 plt.rcParams['axes.unicode_minus']=False#解决plt画图中文乱码问题
 
 def Plot_Effi(Constant,effi=False,error=False):
+    # real_set=Calculate_diffraction_angle(np.rad2deg(Constant['thetai']),0,Constant['wavelength'],Constant['period'],1)
     real_set=Constant['real_Ray1_idx']
     R_effi=Constant['R_effi']
     fig=plt.figure(figsize=(8,6))

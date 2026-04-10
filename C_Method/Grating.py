@@ -44,3 +44,20 @@ class Blazed():
             temp=np.tan(self.angle)
             return temp*x*(x<x1)+((x2-x)*self.depth/(x2-x1)*((x>=x1)&(x<x2)))
         return a_fun
+
+class Sinusoidal():
+    def __init__(self,T,fill_factor,h):
+        '''
+        T:光栅周期;
+        fill_factor:占空比;
+        h:光栅高度
+        '''
+        self.name="Sinusoidal"
+        self.T=T
+        self.fill_factor=fill_factor
+        self.h=h
+    
+    def profile(self):
+        a_fun=lambda x:(self.h/2)*(1+np.sin(2*np.pi*x/self.T))
+        a_diff_fun=lambda x:(self.h/2)*(2*np.pi/self.T)*np.cos(2*np.pi*x/self.T)
+        return a_fun,a_diff_fun

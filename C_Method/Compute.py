@@ -16,7 +16,7 @@ def Compute(n1,n2,polar,Constant):
     k0=2*np.pi/Constant['wavelength']#波数
     a_fun=lambda x:k0*Constant['a'](x/k0)
     a_diff_fun=lambda x:Constant['diff_a'](x/k0)
-    K=2*np.pi/Constant['gx']#倒易空间矢量
+    K=2*np.pi/Constant['period']#倒易空间矢量
     nDim=Constant['n_Tr']#计算所用的总模数
     alpha0=Constant['n1']*k0*np.sin(Constant['thetai'])
     # m1=int(-math.floor(alpha0/K)-(nDim-1)/2)
@@ -39,13 +39,13 @@ def Compute(n1,n2,polar,Constant):
     SB2_idx2=(np.abs(np.imag(SB2))==0)&(np.real(SB2)<0)#indices of real propogation order
     SB2_ind2=np.arange(m1,m2+1)
     real_Ray2_idx=SB2_ind2[SB2_idx2]
-    a_diff_vec=F_series_gen(a_diff_fun,10,k0*Constant['gx'],nDim)
+    a_diff_vec=F_series_gen(a_diff_fun,10,k0*Constant['period'],nDim)
     a_mat=Toeplitz(a_diff_vec,nDim)
     V1,rho1,V2,rho2=Eigen(A,B1,B2,a_mat,nDim)
     real_eig1p,real_eig2n,imag_eig1p,imag_eig2n,imag_Vec1p,imag_Vec2n=SortEigenvalueChand(V1,rho1,V2,rho2,Constant['accuracy'],nDim)
     #Assemble F-matrices
     b0=np.sqrt(B1[-m1])
-    F_in,FRN,FRP=GenerateFFieldsChand(a_fun,b0,nDim,k0,Constant['gx'],m1,m2,real_Ray2_idx,real_Ray1_idx,SB1,SB2)
+    F_in,FRN,FRP=GenerateFFieldsChand(a_fun,b0,nDim,k0,Constant['period'],m1,m2,real_Ray2_idx,real_Ray1_idx,SB1,SB2)
     #Assemble G-matrices
     G_RP,G_RN,G_in,G_P,G_N=GenerateGFieldsChand(b0,a_mat,real_eig1p,real_eig2n,SB1,SB2,real_Ray1_idx,real_Ray2_idx,m1,m2,nDim,imag_eig1p,
     imag_eig2n,FRP,FRN,F_in,imag_Vec1p,imag_Vec2n,A,Constant['eps1'],Constant['eps2'])
