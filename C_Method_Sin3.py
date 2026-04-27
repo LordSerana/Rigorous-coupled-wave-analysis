@@ -73,11 +73,41 @@ def Eigen(a_mat,alpha_m,beta1_m,beta2_m,Constant):
     eig2=1/eig2
     return eig1,vec1,eig2,vec2
 
-def SortEigenvalue(eig,vect,accuracyImag):
-    idxRealAndPositive=((np.abs(np.imag(eig))<accuracyImag)&(np.real(eig)>0))
-    idxRealAndNegative=((np.abs(np.imag(eig))<accuracyImag)&(np.real(eig)<=0))
-    idxImagAndPositive=((np.abs(np.imag(eig))>=accuracyImag)&(np.imag(eig)>0))
-    idxImagAndNegative=((np.abs(np.imag(eig))>=accuracyImag)&(np.imag(eig)<=0))
+def SortEigenvalue(eig,vect,accuracyImag,ratio_threshold):
+    real_parts=np.real(eig)
+    imag_parts=np.imag(eig)
+    abs_real=np.abs(real_parts)
+    abs_imag=np.abs(imag_parts)
+    #=======判断特征值的主导性
+    n=len(eig)
+    is_real_dominant=(abs_real>ratio_threshold*abs_imag)
+    is_imag_dominant=(abs_imag>ratio_threshold*abs_real)
+    is_mixed=(~is_real_dominant)&(~is_imag_dominant)
+    idxRealAndPositive=np.zeros(n,dtype=bool)
+    idxRealAndNegative=np.zeros(n,dtype=bool)
+    idxImagAndPositive=np.zeros(n,dtype=bool)
+    idxImagAndNegative=np.zeros(n,dtype=bool)
+    #===============实数主导,按实数正负分类
+    real_dominant_indices=np.where(is_real_dominant)[0]
+    for idx in real_dominant_indices:
+        if real_parts[idx]>0:
+            idxRealAndPositive[idx]=True
+        else:
+            idxRealAndNegative[idx]=True
+    #================虚数主导
+    imag_dominant_indices=np.where(is_imag_dominant)[0]
+    for idx in imag_dominant_indices:
+        if imag_parts[idx]>0:
+            idxImagAndPositive[idx]=True
+        else:
+            idxImagAndNegative[idx]=True
+    #================混合特征值,复数
+    mixed_indices=np.where(is_mixed)[0]
+    for idx in mixed_indices:
+        if imag_parts[idx]>0:
+            idxImagAndPositive[idx]=True
+        else:
+            idxImagAndNegative[idx]=True
 
     eig_real_p=eig[idxRealAndPositive]
     vect_real_p=vect[:,idxRealAndPositive]
@@ -263,11 +293,11 @@ n1=1
 n2=1.4482+7.5367j
 pol='TE'
 period=4*1e-6
-n_Tr=2*12+1
+n_Tr=2*45+1
 lam=632.8*1e-9
 thetai=np.radians(0)
 depth=2*1e-6#光栅深度
-ImagMin=1e-9
+ImagMin=1e-8
 cut=1#需要修剪数据
 accuracy=1e-10
 #==================================================
@@ -288,8 +318,8 @@ a_row=a_diff_vec[Constant['n_Tr']-1::-1]
 # a_diff_vec=F_series_gen(a_diff,n_Tr)
 a_mat=toeplitz(a_col,a_row)
 eig1,vect1,eig2,vect2=Eigen(a_mat,Constant['alpha_m'],Constant['beta1_m'],Constant['beta2_m'],Constant)
-eig1_p,vect1_p,_,_=SortEigenvalue(eig1,vect1,Constant['ImagMin'])
-_,_,eig2_n,vect2_n=SortEigenvalue(eig2,vect2,Constant['ImagMin'])
+eig1_p,vect1_p,_,_=SortEigenvalue(eig1,vect1,Constant['ImagMin'],100)
+_,_,eig2_n,vect2_n=SortEigenvalue(eig2,vect2,Constant['ImagMin'],100)
 Constant['vect1_p']=vect1_p
 Constant['vect2_n']=vect2_n
 Fmn,Fmk,Fm0,Fmq,Fmr=GenerateFField(Constant)
@@ -326,5 +356,6 @@ n2_set_ind=Constant['n2_set_ind']
 if len(n2_set)!=0:
     for i in range(len(n2_set)):
         T[i]=(Constant['eps1']*beta2_m[n2_set_ind[i]]/(Constant['eps2']*beta1_m[(Constant['n_Tr']+1)/2]))*abs(Amplitude[Constant['n_Tr']+i])**2
-print(R)
+start_order=-6
+[print(f"{start_order+i} {val}") for i,val in enumerate(R)]
 print("sum R:{}".format(sum(R)))
