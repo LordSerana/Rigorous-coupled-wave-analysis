@@ -5,6 +5,10 @@ from S_matrix.Grating import Sinusoidal
 from scipy import integrate
 from scipy.linalg import toeplitz
 import scipy.linalg as la
+import decimal
+import Solve_ill_Matrix
+
+decimal.getcontext().prec=16
 
 def SetConstant(n1,n2,polar,period,n_Tr,lam,thetai):
     '''
@@ -42,8 +46,8 @@ def SetConstant(n1,n2,polar,period,n_Tr,lam,thetai):
     Constant['m_set']=m_set
     Constant['n_set']=n_set
     alpha_m=n1*Constant['k0']*np.sin(thetai)+Constant['K']*m_set
-    beta1_m=np.sqrt(np.diag(np.eye(n_Tr)*(n1*Constant['k0'])**2-np.diag(alpha_m**2)),dtype=complex)
-    beta2_m=np.sqrt(np.diag(np.eye(n_Tr)*(n2*Constant['k0'])**2-np.diag(alpha_m**2)),dtype=complex)
+    beta1_m=np.sqrt(np.diag(np.eye(n_Tr)*(n1*Constant['k0'])**2-np.diag(alpha_m**2)),dtype=np.complex128)
+    beta2_m=np.sqrt(np.diag(np.eye(n_Tr)*(n2*Constant['k0'])**2-np.diag(alpha_m**2)),dtype=np.complex128)
     Constant['alpha_m']=alpha_m
     Constant['beta1_m']=beta1_m
     Constant['beta2_m']=beta2_m
@@ -62,18 +66,24 @@ def SetConstant(n1,n2,polar,period,n_Tr,lam,thetai):
     return Constant
 
 def Eigen(a_mat,alpha_m,beta1_m,beta2_m,Constant):
-    IB1=np.linalg.solve(np.diag(beta1_m**2),np.eye(Constant['n_Tr']))
-    IB2=np.linalg.solve(np.diag(beta2_m**2),np.eye(Constant['n_Tr']))
-    AUX_mat=np.eye(Constant['n_Tr'])+a_mat@a_mat
-    Matrix1=np.block([[-IB1@(np.diag(alpha_m)@a_mat+a_mat@np.diag(alpha_m)),IB1@AUX_mat],[np.eye(Constant['n_Tr']),np.zeros((Constant['n_Tr'],Constant['n_Tr']))]])
-    Matrix2=np.block([[-IB2@(np.diag(alpha_m)@a_mat+a_mat@np.diag(alpha_m)),IB2@AUX_mat],[np.eye(Constant['n_Tr']),np.zeros((Constant['n_Tr'],Constant['n_Tr']))]])
+    IB1=np.linalg.solve(np.diag(beta1_m**2),np.eye(Constant['n_Tr'],dtype=np.complex128))
+    IB2=np.linalg.solve(np.diag(beta2_m**2),np.eye(Constant['n_Tr'],dtype=np.complex128))
+    AUX_mat=np.eye(Constant['n_Tr'],dtype=np.complex128)+a_mat@a_mat
+    Matrix1=np.block([[-IB1@(np.diag(alpha_m)@a_mat+a_mat@np.diag(alpha_m)),IB1@AUX_mat],
+    [np.eye(Constant['n_Tr'],dtype=np.complex128),np.zeros((Constant['n_Tr'],Constant['n_Tr']),dtype=np.complex128)]])
+    #==========使用微扰动技术
+    Matrix1=Perturbation(Matrix1)
+    Matrix2=np.block([[-IB2@(np.diag(alpha_m)@a_mat+a_mat@np.diag(alpha_m)),IB2@AUX_mat],
+    [np.eye(Constant['n_Tr'],dtype=np.complex128),np.zeros((Constant['n_Tr'],Constant['n_Tr']),dtype=np.complex128)]])
+    #============微扰动技术
+    Matrix2=Perturbation(Matrix2)
     eig1,vec1=np.linalg.eig(Matrix1)
     eig2,vec2=np.linalg.eig(Matrix2)
     eig1=1/eig1
     eig2=1/eig2
     return eig1,vec1,eig2,vec2
 
-def SortEigenvalue(eig,vect,accuracyImag,ratio_threshold):
+def SortEigenvalue(eig,vect,ratio_threshold):
     real_parts=np.real(eig)
     imag_parts=np.imag(eig)
     abs_real=np.abs(real_parts)
@@ -164,7 +174,7 @@ def GenerateFField(Constant):
     idx_n=0
     #=====Fmn=====
     if len(Constant['n1_set'])!=0:
-        Fmn=np.zeros((len(m_set),len(n1_set)),dtype=complex)
+        Fmn=np.zeros((len(m_set),len(n1_set)),dtype=np.complex128)
         for m in range(m_set[0],m_set[-1]+1,1):
             for n in range(n1_set[0],n1_set[-1],1):
                 Fmn[idx_m,idx_n]=L_eval(beta1_m[n1_set_ind[idx_n]],m-n,Constant)
@@ -172,12 +182,12 @@ def GenerateFField(Constant):
             idx_n=0
             idx_m+=1
     else:
-        Fmn=np.zeros(len(m_set),len(n1_set))
+        Fmn=np.zeros(len(m_set),len(n1_set),dtype=np.complex128)
     #======Fmk========
     idx_m=0
     idx_k=0
     if len(Constant['n2_set'])!=0:
-        Fmk=np.zeros(len(m_set),len(n2_set))
+        Fmk=np.zeros(len(m_set),len(n2_set),dtype=np.complex128)
         for m in range(m_set[0],m_set[-1]+1,1):
             for k in range(n2_set[0],n2_set[-1]+1,1):
                 Fmk[idx_m,idx_k]=L_eval(-beta2_m[n2_set_ind[idx_k]],m-k,Constant)
@@ -188,7 +198,7 @@ def GenerateFField(Constant):
         Fmk=np.zeros((len(m_set),len(n2_set)))
     #=====F_in_0===========
     idx=0
-    Fm0=np.zeros((len(m_set),1),dtype=complex)
+    Fm0=np.zeros((len(m_set),1),dtype=np.complex128)
     for m in range(m_set[0],m_set[-1]+1,1):
         Fm0[idx,0]=L_eval(-beta1_m[int((Constant['n_Tr']+1)/2)],m,Constant)
         idx+=1
@@ -204,7 +214,7 @@ def GenerateFField(Constant):
     return Fmn,Fmk,Fm0,Fmq,Fmr
 
 def GenerateGField(a_mat,Constant,eig1_p,eig2_n):
-    a_ms=np.eye(Constant['n_Tr'])+a_mat@a_mat
+    a_ms=np.eye(Constant['n_Tr'],dtype=np.complex128)+a_mat@a_mat
     n1_set=Constant['n1_set']
     n1_set_ind=Constant['n1_set_ind']
     n2_set=Constant['n2_set']
@@ -220,56 +230,56 @@ def GenerateGField(a_mat,Constant,eig1_p,eig2_n):
     Fmr=Constant['Fmr']
     #===========Gmn=========================
     if len(Constant['n1_set_ind'])!=0:
-        Gmn=np.zeros((len(m_set),len(n1_set)),dtype=complex)
+        Gmn=np.zeros((len(m_set),len(n1_set)),dtype=np.complex128)
         for m in range(len(m_set)):
             for n in range(len(n1_set)):
-                Gmn_s=np.zeros(len(m_set),dtype=complex)
+                Gmn_s=np.zeros(len(m_set),dtype=np.complex128)
                 for s in range(len(m_set)):
                     Gmn_s[s]=(a_mat[m,s]*alpha_m[s]-a_ms[m,s]*beta1_m[n1_set_ind[n]])*Fmn[s,n]
                 Gmn[m,n]=Constant['Z0']/Constant['k0']/Constant['eps1']*sum(Gmn_s)
     else:
-        Gmn=np.zeros((len(m_set),len(n1_set)))
+        Gmn=np.zeros((len(m_set),len(n1_set)),dtype=np.complex128)
     #==========Gmk==========================
     if len(Constant['n2_set_ind'])!=0:
-        Gmk=np.zeros((len(m_set),len(n2_set)),dtype=complex)
+        Gmk=np.zeros((len(m_set),len(n2_set)),dtype=np.complex128)
         for m in range(len(m_set)):
             for k in range(len(n2_set_ind)):
-                Gmk_s=np.zeros((len(m_set),1))
+                Gmk_s=np.zeros((len(m_set),1),dtype=np.complex128)
                 for s in range(len(m_set)):
                     Gmk_s[s,0]=(a_mat[m,s]*alpha_m[s]+a_ms[m,s]*beta2_m[n2_set_ind[k]])*Fmk[s,k]
-                Gmk[m,k]=Constant['Z0']/Constant['k0']/Constant['eps2']*sum(Gmk_s)
+                Gmk[m,k]=Constant['Z0']/Constant['k0']/Constant['eps2']*sum(Gmk_s)[0]
     else:
-        Gmk=np.zeros((len(m_set),len(n2_set)),dtype=complex)
+        Gmk=np.zeros((len(m_set),len(n2_set)),dtype=np.complex128)
     #=================Gm0=========================
-    Gm0=np.zeros((len(m_set),1),dtype=complex)
+    Gm0=np.zeros((len(m_set),1),dtype=np.complex128)
     for m in range(len(m_set)):
-        Gm0_s=np.zeros((len(m_set),1),dtype=complex)
+        Gm0_s=np.zeros((len(m_set),1),dtype=np.complex128)
         for s in range(len(m_set)):
             Gm0_s[s,0]=(a_mat[m,s]*alpha_m[s]+a_ms[m,s]*beta1_m[int((Constant['n_Tr']-1)/2)])*Fm0[s][0]
-        Gm0[m,0]=Constant['Z0']/Constant['k0']/Constant['eps1']*sum(Gm0_s)
+        Gm0[m,0]=Constant['Z0']/Constant['k0']/Constant['eps1']*sum(Gm0_s)[0]
     #=================Gmq==========================
     if len(n1_set)<Constant['n_Tr']:
-        Gmq=np.zeros((len(m_set),Constant['n_Tr']-len(n1_set)),dtype=complex)
+        Gmq=np.zeros((len(m_set),Constant['n_Tr']-len(n1_set)),dtype=np.complex128)
         for m in range(len(m_set)):
             for q in range(Constant['n_Tr']-len(n1_set)):
-                Gmq_s=np.zeros((len(m_set),1))
+                Gmq_s=np.zeros((len(m_set),1),dtype=np.complex128)
                 for s in range(len(m_set)):
                     Gmq_s[s,0]=(a_mat[m,s]*alpha_m[s]-a_ms[m,s]*eig1_p[len(n1_set)+q])*Fmq[s,q]
-                Gmq[m,q]=Constant['Z0']/Constant['k0']/Constant['eps1']*sum(Gmq_s)
+                Gmq[m,q]=Constant['Z0']/Constant['k0']/Constant['eps1']*sum(Gmq_s)[0]
     else:
-        Gmq=np.zeros((len(m_set),Constant['n_Tr']-len(n1_set)),dtype=complex)
+        Gmq=np.zeros((len(m_set),Constant['n_Tr']-len(n1_set)),dtype=np.complex128)
     #==================Gmr==========================
     if len(n2_set)<Constant['n_Tr']:
-        Gmr=np.zeros((len(m_set),Constant['n_Tr']-len(n2_set)),dtype=complex)
+        Gmr=np.zeros((len(m_set),Constant['n_Tr']-len(n2_set)),dtype=np.complex128)
         for m in range(len(m_set)):
             for r in range(Constant['n_Tr']-len(n2_set)):
-                Gmr_s=np.zeros((len(m_set),1))
+                Gmr_s=np.zeros((len(m_set),1),dtype=np.complex128)
                 for s in range(len(m_set)):
                     Gmr_s[s]=(a_mat[m,s]*alpha_m[s]-a_ms[m,s]*eig2_n[len(n2_set)+r])*Fmr[s,r]
                 Gmr_s=Gmr_s.flatten()
                 Gmr[m,r]=Constant['Z0']/Constant['k0']/Constant['eps2']*sum(Gmr_s)
     else:
-        Gmr=np.zeros((len(m_set),Constant['n_Tr']-len(n2_set)),dtype=complex)
+        Gmr=np.zeros((len(m_set),Constant['n_Tr']-len(n2_set)),dtype=np.complex128)
     return Gmn,Gmk,Gm0,Gmq,Gmr
 
 def CutSmallElement(a,accuracy):
@@ -279,26 +289,31 @@ def CutSmallElement(a,accuracy):
 
 def ComputeAdiff(Constant):
     n_set=Constant['n_set']
-    a_diff=np.zeros(len(n_set))
+    a_diff=np.zeros(len(n_set),dtype=np.complex128)
     i=0
     for n in range(n_set[0],n_set[-1]+1):
         F=lambda x:(1/Constant['period'])*np.exp(-1j*n*Constant['K']*x)*Constant['a_diff(x)'](x)
-        a_diff[i],error=integrate.quad(F,0,Constant['period'])
+        a_diff[i],error=integrate.quad(F,0,Constant['period'],epsrel=1e-4,limit=300,complex_func=True)
         i+=1
     a_diff=CutSmallElement(a_diff,1e-10)
     return a_diff
+
+def Perturbation(Matrix):
+    temp=Matrix.astype(np.complex64)
+    Matrix=temp.astype(np.complex128)
+    return Matrix
 
 ####=============指定仿真材料等参数================
 n1=1
 n2=1.4482+7.5367j
 pol='TE'
 period=4*1e-6
-n_Tr=2*45+1
+n_Tr=2*20+1
 lam=632.8*1e-9
 thetai=np.radians(0)
 depth=2*1e-6#光栅深度
 ImagMin=1e-8
-cut=1#需要修剪数据
+cut=0#需要修剪数据
 accuracy=1e-10
 #==================================================
 Constant=SetConstant(n1,n2,pol,period,n_Tr,lam,thetai)
@@ -318,8 +333,8 @@ a_row=a_diff_vec[Constant['n_Tr']-1::-1]
 # a_diff_vec=F_series_gen(a_diff,n_Tr)
 a_mat=toeplitz(a_col,a_row)
 eig1,vect1,eig2,vect2=Eigen(a_mat,Constant['alpha_m'],Constant['beta1_m'],Constant['beta2_m'],Constant)
-eig1_p,vect1_p,_,_=SortEigenvalue(eig1,vect1,Constant['ImagMin'],100)
-_,_,eig2_n,vect2_n=SortEigenvalue(eig2,vect2,Constant['ImagMin'],100)
+eig1_p,vect1_p,_,_=SortEigenvalue(eig1,vect1,100)
+_,_,eig2_n,vect2_n=SortEigenvalue(eig2,vect2,100)
 Constant['vect1_p']=vect1_p
 Constant['vect2_n']=vect2_n
 Fmn,Fmk,Fm0,Fmq,Fmr=GenerateFField(Constant)
@@ -331,23 +346,24 @@ if cut==1:
     Fmr=CutSmallElement(Fmr,accuracy)
 Gmn,Gmk,Gm0,Gmq,Gmr=GenerateGField(a_mat,Constant,eig1_p,eig2_n)
 GF_matrix=np.block([[Fmn,Fmq,-Fmk,-Fmr],[Gmn,Gmq,-Gmk,-Gmr]])
+GF_matrix=Perturbation(GF_matrix)
 GF_col=-np.block([[Fm0],[Gm0]])
 ##==============固定碰到大条件数矩阵=====================
-U,s,Vt=la.svd(GF_matrix,full_matrices=False)
-threshold=np.max(s)*np.max(GF_matrix.shape)*np.finfo(float).eps
-s_inv=np.zeros_like(s)
-mask=(s>threshold)
-s_inv[mask]=1.0/s[mask]
-s_inv=s_inv.reshape(-1,1)
-Amplitude=Vt.T@(s_inv*(U.T@GF_col))
-Amplitude=Amplitude.flatten()
-# Amplitude=np.linalg.solve(GF_matrix,GF_col)
+Amplitude=Solve_ill_Matrix.solve_ill_conditioned_system(GF_matrix,GF_col,'ridge')
+# U,s,Vt=la.svd(GF_matrix,full_matrices=False)
+# threshold=np.max(s)*np.max(GF_matrix.shape)*np.finfo(float).eps
+# s_inv=np.zeros_like(s)
+# mask=(s>threshold)
+# s_inv[mask]=1.0/s[mask]
+# s_inv=s_inv.reshape(-1,1)
+# Amplitude=Vt.T@(s_inv*(U.T@GF_col))
+# Amplitude=Amplitude.flatten()
 #==============Reflection efficiency=================
 R=np.zeros(len(Constant['n1_set']))
 beta1_m=Constant['beta1_m']
 n1_set_ind=Constant['n1_set_ind']
 for i in range(len(Constant['n1_set'])):
-    R[i]=beta1_m[n1_set_ind[i]]/beta1_m[int((Constant['n_Tr']-1)/2)]*(abs(Amplitude[i])**2)
+    R[i]=np.real(beta1_m[n1_set_ind[i]]/beta1_m[int((Constant['n_Tr']-1)/2)])*(abs(Amplitude[i])**2)
 #=============Transmission efficiency==============
 T=np.zeros(len(Constant['n1_set']))
 beta2_m=Constant['beta2_m']
@@ -355,7 +371,7 @@ n2_set=Constant['n2_set']
 n2_set_ind=Constant['n2_set_ind']
 if len(n2_set)!=0:
     for i in range(len(n2_set)):
-        T[i]=(Constant['eps1']*beta2_m[n2_set_ind[i]]/(Constant['eps2']*beta1_m[(Constant['n_Tr']+1)/2]))*abs(Amplitude[Constant['n_Tr']+i])**2
+        T[i]=(Constant['eps1']*beta2_m[n2_set_ind[i]]/(Constant['eps2']*beta1_m[(Constant['n_Tr']-1)/2]))*abs(Amplitude[Constant['n_Tr']+i])**2
 start_order=-6
 [print(f"{start_order+i} {val}") for i,val in enumerate(R)]
 print("sum R:{}".format(sum(R)))
