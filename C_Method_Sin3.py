@@ -72,11 +72,11 @@ def Eigen(a_mat,alpha_m,beta1_m,beta2_m,Constant):
     Matrix1=np.block([[-IB1@(np.diag(alpha_m)@a_mat+a_mat@np.diag(alpha_m)),IB1@AUX_mat],
     [np.eye(Constant['n_Tr'],dtype=np.complex128),np.zeros((Constant['n_Tr'],Constant['n_Tr']),dtype=np.complex128)]])
     #==========使用微扰动技术
-    Matrix1=Perturbation(Matrix1)
+    # Matrix1=Perturbation(Matrix1)
     Matrix2=np.block([[-IB2@(np.diag(alpha_m)@a_mat+a_mat@np.diag(alpha_m)),IB2@AUX_mat],
     [np.eye(Constant['n_Tr'],dtype=np.complex128),np.zeros((Constant['n_Tr'],Constant['n_Tr']),dtype=np.complex128)]])
     #============微扰动技术
-    Matrix2=Perturbation(Matrix2)
+    # Matrix2=Perturbation(Matrix2)
     eig1,vec1=np.linalg.eig(Matrix1)
     eig2,vec2=np.linalg.eig(Matrix2)
     eig1=1/eig1

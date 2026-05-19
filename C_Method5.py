@@ -23,11 +23,13 @@ def GenerateFFieldsChand(a,b0,nDim,k0,d,m1,m2,real_Ray2_idx,real_Ray1_idx,SB1,SB
         min_ray1=np.min(real_Ray1_idx)
         max_ray1=np.max(real_Ray1_idx)
         for M in range(min_ray1,max_ray1+1):
-            LPn_fun=np.exp(-1j*SB1[M-m1]*a)
+            LPn_fun=np.exp(1j*SB1[M-m1]*a)
             FRP0=F_series_gen(LPn_fun,nDim,cut_small=False)
             q0=len(FRP0)//2
-            part1=np.conj(FRP0[q0+m1-M:q0])
-            part2=np.conj(FRP0[q0:q0+m2-M+1])
+            part1=FRP0[q0+m1-M:q0]
+            part2=FRP0[q0:q0+m2-M+1]
+            # part1=np.conj(FRP0[q0+m1-M:q0])
+            # part2=np.conj(FRP0[q0:q0+m2-M+1])
             FRP[:,M-min_ray1]=np.concatenate([part1,part2])
     else:
         FRP=np.zeros((nDim,len(real_Ray1_idx)))
@@ -240,7 +242,7 @@ n2=1.4482+7.5367j
 Constant['n1']=n1
 Constant['n2']=n2
 Constant['thetai']=np.radians(0)
-Constant['n_Tr']=2*20+1
+Constant['n_Tr']=2*15+1
 Constant['wavelength']=632.8*1e-9
 Constant['k0']=2*np.pi/Constant['wavelength']
 #set Accuracy
