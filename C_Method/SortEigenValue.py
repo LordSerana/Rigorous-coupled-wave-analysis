@@ -1,31 +1,69 @@
 import numpy as np
 
-def SortEigenvalueChand(V1,rho1,V2,rho2,tol,nDim):
-    #分离实特征值，入射介质
-    real_eig1p_ind=(abs(np.imag(rho1))<tol)&(np.real(rho1)>tol)
-    real_eig1p=rho1[real_eig1p_ind]
-    sort_idx1=np.argsort(-real_eig1p)#按特征值实部降序，为传播模式
-    real_eig1p=real_eig1p[sort_idx1]
-    #分离实特征值，透射介质
-    real_eig2n_ind=(abs(np.imag(rho2))<tol)&(np.real(rho2)<-tol)
-    real_eig2n=rho2[real_eig2n_ind]
-    sort_idx2=np.argsort(-real_eig2n)#按实部绝对值降序，为传播模式
-    real_eig2n=real_eig2n[sort_idx2]
-    #分离虚特征值，入射介质
-    imag_eig1p_ind=(np.imag(rho1)>tol)
-    imag_eig1p=rho1[imag_eig1p_ind]
-    sort_idx3=np.argsort(np.abs(np.imag(imag_eig1p)))#按虚部绝对值升序排序，为凋零模式
-    imag_eig1p=imag_eig1p[sort_idx3]
-    #分离虚特征值，透射介质
-    imag_eig2n_ind=(np.imag(rho2)<-tol)
-    imag_eig2n=rho2[imag_eig2n_ind]
-    sort_idx4=np.argsort(np.abs(np.imag(imag_eig2n)))#按虚部绝对值升序排序，为凋零模式
-    imag_eig2n=imag_eig2n[sort_idx4]
-    #提取并排序对应的特征向量
-    #入射介质虚部特征向量
-    s_imag_Vec1p=V1[:nDim,:][:,imag_eig1p_ind]
-    imag_Vec1p=s_imag_Vec1p[:,sort_idx3]
-    #透射介质虚部特征向量
-    s_imag_Vec2n=V2[:nDim,:][:,imag_eig2n_ind]
-    imag_Vec2n=s_imag_Vec2n[:,sort_idx4]
-    return real_eig1p,real_eig2n,imag_eig1p,imag_eig2n,imag_Vec1p,imag_Vec2n
+def SortEigenvalue(eig,vect,threshold):
+    real_parts=np.real(eig)
+    imag_parts=np.imag(eig)
+    abs_real=np.abs(real_parts)
+    abs_imag=np.abs(imag_parts)
+    #=======判断特征值的主导性
+    n=len(eig)
+    is_real_dominant=(abs_real>threshold*abs_imag)
+    is_imag_dominant=(abs_imag>threshold*abs_real)
+    is_mixed=(~is_real_dominant)&(~is_imag_dominant)
+    idxRealAndPositive=np.zeros(n,dtype=bool)
+    idxRealAndNegative=np.zeros(n,dtype=bool)
+    idxImagAndPositive=np.zeros(n,dtype=bool)
+    idxImagAndNegative=np.zeros(n,dtype=bool)
+    #===============实数主导,按实数正负分类
+    real_dominant_indices=np.where(is_real_dominant)[0]
+    for idx in real_dominant_indices:
+        if real_parts[idx]>0:
+            idxRealAndPositive[idx]=True
+        else:
+            idxRealAndNegative[idx]=True
+    #================虚数主导
+    imag_dominant_indices=np.where(is_imag_dominant)[0]
+    for idx in imag_dominant_indices:
+        if imag_parts[idx]>0:
+            idxImagAndPositive[idx]=True
+        else:
+            idxImagAndNegative[idx]=True
+    #================混合特征值,复数
+    mixed_indices=np.where(is_mixed)[0]
+    for idx in mixed_indices:
+        if imag_parts[idx]>0:
+            idxImagAndPositive[idx]=True
+        else:
+            idxImagAndNegative[idx]=True
+
+    eig_real_p=eig[idxRealAndPositive]
+    vect_real_p=vect[:,idxRealAndPositive]
+    eig_real_n=eig[idxRealAndNegative]
+    vect_real_n=vect[:,idxRealAndNegative]
+    eig_imag_p=eig[idxImagAndPositive]
+    vect_imag_p=vect[:,idxImagAndPositive]
+    eig_imag_n=eig[idxImagAndNegative]
+    vect_imag_n=vect[:,idxImagAndNegative]
+
+    if len(eig_real_p)!=0:
+        ind=np.argsort(eig_real_p.real)[::-1]
+        eig_real_p=eig_real_p[ind]
+        vect_real_p=vect_real_p[:,ind]
+    if len(eig_imag_p)!=0:
+        ind=np.argsort(eig_imag_p.imag)
+        eig_imag_p=eig_imag_p[ind]
+        vect_imag_p=vect_imag_p[:,ind]
+    if len(eig_real_n)!=0:
+        ind=np.argsort(eig_real_n.real)
+        eig_real_n=eig_real_n[ind]
+        vect_real_n=vect_real_n[:,ind]
+    if len(eig_imag_n)!=0:
+        ind=np.argsort(eig_imag_n.imag)[::-1]
+        eig_imag_n=eig_imag_n[ind]
+        vect_imag_n=vect_imag_n[:,ind]
+    
+    eig_p=np.block([eig_real_p,eig_imag_p])
+    vect_p=np.block([vect_real_p,vect_imag_p])
+    eig_n=np.block([eig_real_n,eig_imag_n])
+    vect_n=np.block([vect_real_n,vect_imag_n])
+    return eig_p,vect_p,eig_n,vect_n
