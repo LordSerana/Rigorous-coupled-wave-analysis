@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from S_matrix.Grating import Triangular,Sinusoidal
 from S_matrix.F_series_gen import F_series_gen
-from C_Method.Toeplitze import Toeplitz
+from C_Method.Toeplitz import Toeplitz
 
 #一般说来，对A,B1,B2的归一化能够降低矩阵条件数,且最终计算结果不变
 plt.rcParams['font.sans-serif']=['SimHei']
