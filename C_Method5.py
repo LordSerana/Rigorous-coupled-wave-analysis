@@ -242,7 +242,7 @@ n2=1.4482+7.5367j
 Constant['n1']=n1
 Constant['n2']=n2
 Constant['thetai']=np.radians(0)
-Constant['n_Tr']=2*15+1
+Constant['n_Tr']=2*20+1
 Constant['wavelength']=632.8*1e-9
 Constant['k0']=2*np.pi/Constant['wavelength']
 #set Accuracy
