@@ -71,6 +71,12 @@ class Sinusoidal():
             x=np.mod(x,self.T)
             return self.depth/2*(1+np.sin(2*np.pi/self.T*x))
         return a_fun
+    
+    def a_diff(self):
+        def temp(x):
+            x=np.mod(x,self.T)
+            return self.depth*np.pi/self.T*np.cos(2*np.pi/self.T*x)
+        return temp
 
 class Blazed():
     def __init__(self,T,angle,fill_factor,n):

@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 def F_series_gen(array,nDim,cut_small=True):
     fourier_coeffi=np.fft.fftshift(np.fft.fft(array)/array.shape[0])
     N=len(array)
-    tol=1e-9
+    tol=1e-10
     if cut_small==True:
         ind_small_real=(np.abs(np.real(fourier_coeffi))<tol)
         fourier_coeffi[ind_small_real]=1j*np.imag(fourier_coeffi[ind_small_real])
