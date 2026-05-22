@@ -400,14 +400,14 @@ def Plot_Effi(Constant,effi=False,error=False):
 n1=1
 n2=1.4482+7.5367j
 pol='TE'
-n_Tr=2*20+1
-lam=500*1e-9
+n_Tr=2*15+1
+lam=632.8*1e-9
 thetai=np.radians(1e-4)
 cut=0
 ImagMin=1e-9
 accuracy=1e-10
 # grating=Triangular(4*1e-6,36,1)
-grating=Sinusoidal(4*1e-6,1,2*1e-6)
+grating=Sinusoidal(4*1e-6,1,0.54*1e-6)
 R_effi=[]
 Constant=SetConstant(n1,n2,pol,grating.T,n_Tr,lam,thetai)
 Constant['depth']=grating.depth
