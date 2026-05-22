@@ -4,6 +4,7 @@ from S_matrix.Grating import Triangular,Sinusoidal
 from S_matrix.F_series_gen import F_series_gen
 from C_Method.Toeplitz import Toeplitz
 
+#对6.py文件进一步优化，采用归一化
 #一般说来，对A,B1,B2的归一化能够降低矩阵条件数,且最终计算结果不变
 plt.rcParams['font.sans-serif']=['SimHei']
 plt.rcParams['axes.unicode_minus']=False#解决plt画图中文乱码问题
@@ -45,8 +46,9 @@ def SetConstant(n1,n2,polar,period,n_Tr,lam,thetai):
     Constant['m_set']=m_set
     Constant['n_set']=n_set
     alpha_m=n1*Constant['k0']*np.sin(thetai)+Constant['K']*m_set
-    beta1_m=np.sqrt(np.diag(np.eye(n_Tr)*(n1*Constant['k0'])**2-np.diag(alpha_m**2)),dtype=np.complex128)
-    beta2_m=np.sqrt(np.diag(np.eye(n_Tr)*(n2*Constant['k0'])**2-np.diag(alpha_m**2)),dtype=np.complex128)
+    alpha_m=alpha_m/Constant['k0']
+    beta1_m=np.sqrt(np.diag(np.eye(n_Tr)*n1**2-np.diag(alpha_m**2)),dtype=np.complex128)
+    beta2_m=np.sqrt(np.diag(np.eye(n_Tr)*n2**2-np.diag(alpha_m**2)),dtype=np.complex128)
     Constant['alpha_m']=alpha_m
     Constant['beta1_m']=beta1_m
     Constant['beta2_m']=beta2_m
@@ -401,8 +403,8 @@ n1=1
 n2=1.4482+7.5367j
 pol='TE'
 n_Tr=2*20+1
-lam=500*1e-9
-thetai=np.radians(1e-4)
+lam=632.8*1e-9
+thetai=np.radians(0)
 cut=0
 ImagMin=1e-9
 accuracy=1e-10
@@ -414,8 +416,8 @@ Constant['depth']=grating.depth
 #===================================================================
 a=grating.profile()
 x=np.linspace(0,Constant['period'],2**10,endpoint=False)
-Constant['a']=a(x)#光栅表面轮廓函数
-dx=Constant['period']/len(x)
+Constant['a']=a(x)*Constant['k0']#光栅表面轮廓函数
+dx=Constant['period']*Constant['k0']/len(x)
 a_diff=np.gradient(Constant['a'],dx)
 Constant['a_diff']=a_diff
 # plt.plot(x,Constant['a'])

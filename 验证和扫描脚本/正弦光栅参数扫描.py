@@ -360,62 +360,6 @@ grating=Sinusoidal(period,1,depth)
 Constant['period']=period
 a=grating.profile()
 Constant['a(x)']=a
-# Constant['a_diff(x)']=grating.a_diff()
-# a_diff_vec=ComputeAdiff(Constant)
-# a_col=a_diff_vec[Constant['n_Tr']-1:]
-# a_row=a_diff_vec[Constant['n_Tr']-1::-1]
-
-
-# x=np.linspace(0,Constant['period'],2**10,endpoint=False)
-# Constant['a']=Constant['k0']*a(x)#光栅表面轮廓函数
-# dx=Constant['period']*Constant['k0']/len(x)
-# a_diff=np.gradient(Constant['a'],dx)
-# a_diff_vec=F_series_gen(a_diff,n_Tr)
-
-
-# a_mat=toeplitz(a_col,a_row)
-# eig1,vect1,eig2,vect2=Eigen(a_mat,Constant['alpha_m'],Constant['beta1_m'],Constant['beta2_m'],Constant)
-# eig1_p,vect1_p,_,_=SortEigenvalue(eig1,vect1,100)
-# _,_,eig2_n,vect2_n=SortEigenvalue(eig2,vect2,100)
-# Constant['vect1_p']=vect1_p
-# Constant['vect2_n']=vect2_n
-# Fmn,Fmk,Fm0,Fmq,Fmr=GenerateFField(Constant)
-# if cut==1:
-#     Fmn=CutSmallElement(Fmn,accuracy)
-#     Fmk=CutSmallElement(Fmk,accuracy)
-#     Fm0=CutSmallElement(Fm0,accuracy)
-#     Fmq=CutSmallElement(Fmq,accuracy)
-#     Fmr=CutSmallElement(Fmr,accuracy)
-# Gmn,Gmk,Gm0,Gmq,Gmr=GenerateGField(a_mat,Constant,eig1_p,eig2_n)
-# GF_matrix=np.block([[Fmn,Fmq,-Fmk,-Fmr],[Gmn,Gmq,-Gmk,-Gmr]])
-# GF_col=-np.block([[Fm0],[Gm0]])
-##==============固定碰到大条件数矩阵=====================
-# Amplitude=Solve_ill_Matrix.solve_ill_conditioned_system(GF_matrix,GF_col,'ridge')
-# U,s,Vt=la.svd(GF_matrix,full_matrices=False)
-# threshold=np.max(s)*np.max(GF_matrix.shape)*np.finfo(float).eps
-# s_inv=np.zeros_like(s)
-# mask=(s>threshold)
-# s_inv[mask]=1.0/s[mask]
-# s_inv=s_inv.reshape(-1,1)
-# Amplitude=Vt.T@(s_inv*(U.T@GF_col))
-# Amplitude=Amplitude.flatten()
-#==============Reflection efficiency=================
-# R=np.zeros(len(Constant['n1_set']))
-# beta1_m=Constant['beta1_m']
-# n1_set_ind=Constant['n1_set_ind']
-# for i in range(len(Constant['n1_set'])):
-#     R[i]=np.real(beta1_m[n1_set_ind[i]]/beta1_m[int((Constant['n_Tr']-1)/2)])*(abs(Amplitude[i])**2)
-#=============Transmission efficiency==============
-# T=np.zeros(len(Constant['n1_set']))
-# beta2_m=Constant['beta2_m']
-# n2_set=Constant['n2_set']
-# n2_set_ind=Constant['n2_set_ind']
-# if len(n2_set)!=0:
-#     for i in range(len(n2_set)):
-#         T[i]=(Constant['eps1']*beta2_m[n2_set_ind[i]]/(Constant['eps2']*beta1_m[(Constant['n_Tr']-1)/2]))*abs(Amplitude[Constant['n_Tr']+i])**2
-# start_order=-6
-# [print(f"{start_order+i} {val}") for i,val in enumerate(R)]
-# print("sum R:{}".format(sum(R)))
 file_path='C:/Users/123/Desktop/正弦光栅0级光参数扫描.xlsx'
 wb=load_workbook(file_path)
 ws=wb.active

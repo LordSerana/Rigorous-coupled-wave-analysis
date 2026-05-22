@@ -259,7 +259,6 @@ Constant['period']=grating.T
 a=grating.profile()
 x=np.linspace(0,Constant['period'],2**10,endpoint=False)
 Constant['a']=a(x)#光栅表面轮廓函数
-# Constant['a']=Constant['k0']*Roughness(a(x),0.05,42)
 dx=Constant['period']/len(x)
 a_diff=np.gradient(Constant['a'],dx)
 # plt.plot(x,Constant['a'])
