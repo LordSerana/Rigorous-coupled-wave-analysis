@@ -2,7 +2,7 @@ import numpy as np
 import sys
 sys.path.append("E:/Project/Python")
 from S_matrix.Set_polarization import Set_Polarization
-from C_Method.Toeplitze import Toeplitz
+from C_Method.Toeplitz import Toeplitz
 from S_matrix.Layer import Layer
 from S_matrix.Star import Star
 from S_matrix.Plot_Effi import Plot_Effi
@@ -16,6 +16,7 @@ plt.rcParams['axes.unicode_minus']=False#解决plt画图中文乱码问题
 '''
 增加光栅种类,检测方法正确性
 计划新增正弦光栅
+4*4形式的最终尝试
 '''
 
 def layer_mode(layer,Constant):
@@ -387,7 +388,6 @@ def Compute(Constant,layers,plot=False):
 
 #####################设定光栅参数#####################################
 Constant={}
-# Constant['fill_factor']=1
 grating=Triangular(4*1e-6,25,1)
 # grating=Rectangular(4*1e-6,0.5,2*1e-6)
 Constant['name']=grating.name
@@ -415,7 +415,7 @@ wavelength=632.8*1e-9
 pTM=0
 pTE=1
 Constant=Set_Polarization(thetai,phi,wavelength,pTM,pTE,Constant)
-m=120
+m=20
 Constant['n_Tr']=2*m+1
 Constant['n']=20#切片数
 Constant['mx']=np.arange(-(Constant['n_Tr']//2),Constant['n_Tr']//2+1)

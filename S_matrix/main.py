@@ -7,7 +7,7 @@ from openpyxl import load_workbook
 
 plt.rcParams['font.sans-serif']=['SimHei']
 plt.rcParams['axes.unicode_minus']=False#解决plt画图中文乱码问题
-############################设定仿真设备层#################################
+#=============================设定仿真设备层=========================
 layers=[
     Layer(n=1,t=1*1e-6),
     Layer(n=1.4482+7.5367j,t=2*1e-6,fill_factor=0.5),
@@ -18,7 +18,7 @@ Constant['n1']=layers[0].n
 Constant['e1']=Constant['n1']**2
 Constant['n2']=layers[-1].n
 Constant['e2']=Constant['n2']**2
-###########################设定仿真常数################################
+#=============================设定仿真常数================================
 thetai=np.radians(0)#入射角thetai
 phi=np.radians(0)#入射角phi
 wavelength=632.8*1e-9
