@@ -13,7 +13,7 @@ def Plot_Effi(Constant,effi=False,error=False):
     Constant['real_set_ind']=real_set_ind
     R_effi=Constant['R_effi']
     # T_effi=Constant['T_effi']
-    Constant['R_effi']=R_effi[real_set_ind]
+    # Constant['R_effi']=R_effi[real_set_ind]
     # Constant['T_effi']=T_effi[real_set_ind]
     fig=plt.figure(figsize=(8,6))
     ##子图1：效率对比
@@ -69,8 +69,8 @@ def Plot_Effi(Constant,effi=False,error=False):
     # plt.title("4微米周期矩形光栅")
     # plt.legend()
     # plt.show()
-    print(R_effi[real_set_ind])
-    print("sum:"+str(sum(R_effi[real_set_ind])))
+    print(R_effi)
+    print("sum:"+str(sum(R_effi)))
     # if error!=False:
     #     plt.figure(2)
     #     plt.plot(real_set,Constant['R_effi']-effi,label="绝对误差")
