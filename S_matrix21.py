@@ -2,7 +2,7 @@ import numpy as np
 import sys
 sys.path.append("E:/Project/Python")
 from S_matrix.Layer import Layer
-from S_matrix.Grating import Sinusoidal
+from S_matrix.Grating import Sinusoidal,Triangular,Blazed
 from S_matrix.Homogeneous_isotropic_matrix import homogeneous_isotropic_matrix
 from S_matrix.Layer_mode import layer_mode
 from S_matrix.Star import Star
@@ -47,6 +47,7 @@ def Set_Polarization(thetai,phi,n1,n2,wavelength,pTE,pTM,m,Nx,accuracy,grating):
     Constant['Nx']=Nx#x方向上的傅里叶快速变换采样数
     Constant['accuracy']=accuracy
     Constant['period']=grating.T
+    Constant['depth']=grating.depth
     kx=np.diag(kinc[0]-2*np.pi*Constant['mx']/Constant['k0']/Constant['period'])
     Constant['kx']=kx
     ky=np.zeros((Constant['n_Tr'],Constant['n_Tr']))
@@ -72,7 +73,7 @@ def Compute(Constant,layers):
         [[np.zeros((4*temp+2,4*temp+2),dtype=complex),np.eye(4*temp+2,dtype=complex)],
          [np.eye(4*temp+2,dtype=complex),np.zeros((4*temp+2,4*temp+2),dtype=complex)]])
     for i in layers[1:-1]:
-        S=layer_mode(i,Constant,'formula')
+        S=layer_mode(i,Constant,'FFT')
         S_global=Star(S_global,S)
     Ssub,Wsub,LAMsub=build_scatter_side(Constant['n2']**2,1,np.diag(kx),np.diag(ky),Constant['W'],transmission_side=True)
     Ssub=np.block([[Ssub[0],Ssub[1]],[Ssub[2],Ssub[3]]])
@@ -96,29 +97,33 @@ def Slice(layers,grating,n):
     layers:传进仿真层,对中间层进行切片,并返回新的layers函数
     '''
     if grating.name!="Rectangular":
-        if grating.name=="Triangular":
-            origin_FillFactor=layers[1].fill_factor
-            depth=Constant['depth']/n#切片层的平均厚度
-            layer0=layers[0]
-            layer_last=layers[-1]
-            layer_new=[]
-            layer_new.append(layer0)
-            if grating.name=="Triangular":
-                for i in range(n):
-                    fill_factor=(2*i+1)/2/n*origin_FillFactor
-                    layer=Layer(n=Constant['n2'],t=depth,fill_factor=fill_factor)
-                    layer_new.append(layer)
-                layer_new.append(layer_last)
+        origin_FillFactor=layers[1].fill_factor
+        offset=layers[1].offset
+        depth=Constant['depth']/n#切片层的平均厚度
+        layer0=layers[0]
+        layer_last=layers[-1]
+        layer_new=[]
+        layer_new.append(layer0)
+        if grating.name=="Triangular" or grating.name=="Blazed":
+            for i in range(n):
+                fill_factor=(2*i+1)/2/n*origin_FillFactor
+                offset=fill_factor/2-origin_FillFactor/2
+                layer=Layer(n=Constant['n2'],t=depth,fill_factor=fill_factor,offset=offset)
+                layer_new.append(layer)
+            layer_new.append(layer_last)
     return layer_new
 
 #============仿真设备层==============================
 layers=[
     Layer(n=1,t=1*1e-6),
-    Layer(n=1.4482+7.5367j,t=2*1e-6,fill_factor=0.5),
+    Layer(n=1.4482+7.5367j,t=2*1e-6,fill_factor=1,offset=0.5),
     Layer(n=1.4482+7.5367j,t=4*1e-6)
     ]
-grating=Sinusoidal(4*1e-6,1,2*1e-6)
+# grating=Sinusoidal(4*1e-6,1,2*1e-6)
+# grating=Triangular(4*1e-6,30,1)
+grating=Blazed(4*1e-6,30,1,1)
 #====================================================
-Constant=Set_Polarization(0,0,1,1.4482+7.5367j,632.8*1e-9,1,0,20,2**10,1e-9,grating)
+Constant=Set_Polarization(0,0,1,1.4482+7.5367j,632.8*1e-9,1,0,20,2**8,1e-9,grating)
+layers=Slice(layers,grating,10)
 Constant=Compute(Constant,layers)
 Plot_Effi(Constant,[],[])

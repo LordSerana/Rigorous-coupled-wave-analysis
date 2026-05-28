@@ -8,3 +8,4 @@ class Layer:
         self.t=kwargs.get('t',0)
         self.n=np.sqrt(self.er*self.ur)
         self.fill_factor=kwargs.get('fill_factor',1)
+        self.offset=kwargs.get('offset',0)

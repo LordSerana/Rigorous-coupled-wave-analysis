@@ -10,10 +10,14 @@ def layer_mode(layer,Constant,case='FFT'):
     m=Constant['n_Tr']//2
     if case=='FFT':
         epsilon=np.ones(Nx,dtype=complex)
-        temp=int(layer.fill_factor*Nx/2)
-        q0=int(Nx/2)
-        epsilon[q0-temp:q0+temp+1]=layer.n**2
-        epsilon_recip=1/epsilon            
+        width=int(layer.fill_factor*Nx)
+        q0=int(Nx//2)
+        start=q0-width//2
+        end=start+width
+        epsilon[start:end]=layer.n**2
+        shift=int(layer.offset*Nx)
+        epsilon=np.roll(epsilon,shift-1)
+        epsilon_recip=1/epsilon
         fourier_coeffi=np.fft.fftshift(np.fft.fft(epsilon,axis=0)/epsilon.shape[0])
         fourier_coeffi_recip=np.fft.fftshift(np.fft.fft(epsilon_recip,axis=0)/epsilon.shape[0])
         E=Toeplitz(fourier_coeffi,2*m+1)
