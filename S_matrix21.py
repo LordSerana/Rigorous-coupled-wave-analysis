@@ -116,7 +116,7 @@ def Slice(layers,grating,n):
         elif grating.name=="Triangular":
             for i in range(n):
                 fill_factor=(2*i+1)/2/n*origin_FillFactor
-                offset=-0.5
+                offset=-0.5#取0/-0.5都行,即翻转结构
                 layer=Layer(n=Constant['n2'],t=depth,fill_factor=fill_factor,offset=offset)
                 layer_new.append(layer)
             layer_new.append(layer_last)
@@ -125,14 +125,14 @@ def Slice(layers,grating,n):
 #============仿真设备层==============================
 layers=[
     Layer(n=1,t=1*1e-6),
-    Layer(n=1.4482+7.5367j,t=2*1e-6,fill_factor=1,offset=0.5),
+    Layer(n=1.4482+7.5367j,t=2*1e-6,fill_factor=1),
     Layer(n=1.4482+7.5367j,t=4*1e-6)
     ]
 # grating=Sinusoidal(4*1e-6,1,2*1e-6)
 grating=Triangular(4*1e-6,30,1)
 # grating=Blazed(4*1e-6,30,1,1)
 #====================================================
-Constant=Set_Polarization(0,0,1,1.4482+7.5367j,632.8*1e-9,1,0,50,2**8,1e-9,grating)
+Constant=Set_Polarization(0,0,1,1.4482+7.5367j,632.8*1e-9,1,0,50,2**10,1e-9,grating)
 n=15
 layers=Slice(layers,grating,n)
 Constant=Compute(Constant,layers)
