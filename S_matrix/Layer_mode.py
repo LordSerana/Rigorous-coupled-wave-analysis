@@ -16,7 +16,7 @@ def layer_mode(layer,Constant,case='FFT'):
         end=start+width
         epsilon[start:end]=layer.n**2
         shift=int(layer.offset*Nx)
-        epsilon=np.roll(epsilon,shift-1)
+        epsilon=np.roll(epsilon,shift)
         epsilon_recip=1/epsilon
         fourier_coeffi=np.fft.fftshift(np.fft.fft(epsilon,axis=0)/epsilon.shape[0])
         fourier_coeffi_recip=np.fft.fftshift(np.fft.fft(epsilon_recip,axis=0)/epsilon.shape[0])

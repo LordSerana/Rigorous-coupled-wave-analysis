@@ -105,10 +105,18 @@ def Slice(layers,grating,n):
         layer_last=layers[-1]
         layer_new=[]
         layer_new.append(layer0)
-        if grating.name=="Triangular" or grating.name=="Blazed":
+        if grating.name=="Blazed":
+            #=============具体来说,实现效果为将堆叠结构重整为左边对齐的闪耀光栅结构
             for i in range(n):
                 fill_factor=(2*i+1)/2/n*origin_FillFactor
                 offset=fill_factor/2-origin_FillFactor/2
+                layer=Layer(n=Constant['n2'],t=depth,fill_factor=fill_factor,offset=offset)
+                layer_new.append(layer)
+            layer_new.append(layer_last)
+        elif grating.name=="Triangular":
+            for i in range(n):
+                fill_factor=(2*i+1)/2/n*origin_FillFactor
+                offset=-0.5
                 layer=Layer(n=Constant['n2'],t=depth,fill_factor=fill_factor,offset=offset)
                 layer_new.append(layer)
             layer_new.append(layer_last)
@@ -121,35 +129,35 @@ layers=[
     Layer(n=1.4482+7.5367j,t=4*1e-6)
     ]
 # grating=Sinusoidal(4*1e-6,1,2*1e-6)
-# grating=Triangular(4*1e-6,30,1)
-grating=Blazed(4*1e-6,30,1,1)
+grating=Triangular(4*1e-6,30,1)
+# grating=Blazed(4*1e-6,30,1,1)
 #====================================================
 Constant=Set_Polarization(0,0,1,1.4482+7.5367j,632.8*1e-9,1,0,50,2**8,1e-9,grating)
-# n=15
-# layers=Slice(layers,grating,n)
-# Constant=Compute(Constant,layers)
-# Plot_Effi(Constant,[],[])
-file_path='C:/Users/123/Desktop/闪耀光栅30仿真数据.xlsx'
-wb=load_workbook(file_path)
-ws=wb.active
-start_col=2
-start_row=17#行
-counter=0
-save_interval=5
-for n in range(2,51):
-    layers=[
-        Layer(n=1,t=1*1e-6),
-        Layer(n=1.4482+7.5367j,t=2*1e-6,fill_factor=1,offset=0.5),
-        Layer(n=1.4482+7.5367j,t=4*1e-6)
-        ]
-    layers=Slice(layers,grating,n)
-    Constant=Compute(Constant,layers)
-    R5=Constant['R_effi'][1]
-    ws.cell(row=start_row,column=start_col,value=R5)
-    counter+=1
-    start_row+=1
-    if counter%save_interval==0:
-        wb.save(file_path)
-        print(f"已保存{counter}个数据")
+n=15
+layers=Slice(layers,grating,n)
+Constant=Compute(Constant,layers)
+Plot_Effi(Constant,[],[])
+# file_path='C:/Users/123/Desktop/闪耀光栅30仿真数据.xlsx'
+# wb=load_workbook(file_path)
+# ws=wb.active
+# start_col=2
+# start_row=17#行
+# counter=0
+# save_interval=5
+# for n in range(2,51):
+#     layers=[
+#         Layer(n=1,t=1*1e-6),
+#         Layer(n=1.4482+7.5367j,t=2*1e-6,fill_factor=1,offset=0.5),
+#         Layer(n=1.4482+7.5367j,t=4*1e-6)
+#         ]
+#     layers=Slice(layers,grating,n)
+#     Constant=Compute(Constant,layers)
+#     R5=Constant['R_effi'][1]
+#     ws.cell(row=start_row,column=start_col,value=R5)
+#     counter+=1
+#     start_row+=1
+#     if counter%save_interval==0:
+#         wb.save(file_path)
+#         print(f"已保存{counter}个数据")
 # ws.cell(row=start_row,column=start_col,value="切片数:{},N={}".format(n,101))
-wb.save(file_path)
+# wb.save(file_path)
