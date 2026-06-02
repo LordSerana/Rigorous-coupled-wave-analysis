@@ -120,6 +120,17 @@ def Slice(layers,grating,n):
                 layer=Layer(n=Constant['n2'],t=depth,fill_factor=fill_factor,offset=offset)
                 layer_new.append(layer)
             layer_new.append(layer_last)
+        elif grating.name=="Sinusoidal":
+            for i in range(n):
+                z1=i*depth
+                z2=(i+1)*depth
+                V=grating.Volume(z1,z2)
+                avg_fillfactor=V/depth/grating.T
+                layer=Layer(n=Constant['n2'],t=depth,fill_factor=avg_fillfactor,offset=0)
+                layer_new.append(layer)
+            layer_new.append(layer_last)
+    else:
+        return layers
     return layer_new
 
 #============仿真设备层==============================
@@ -128,8 +139,8 @@ layers=[
     Layer(n=1.4482+7.5367j,t=2*1e-6,fill_factor=1),
     Layer(n=1.4482+7.5367j,t=4*1e-6)
     ]
-# grating=Sinusoidal(4*1e-6,1,2*1e-6)
-grating=Triangular(4*1e-6,30,1)
+grating=Sinusoidal(4*1e-6,1,2*1e-6)
+# grating=Triangular(4*1e-6,30,1)
 # grating=Blazed(4*1e-6,30,1,1)
 #====================================================
 Constant=Set_Polarization(0,0,1,1.4482+7.5367j,632.8*1e-9,1,0,50,2**10,1e-9,grating)

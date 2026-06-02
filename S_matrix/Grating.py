@@ -1,4 +1,5 @@
 import numpy as np
+from scipy.integrate import quad
 
 class Triangular():
     def __init__(self,T,base_angle,fill_factor):
@@ -77,6 +78,19 @@ class Sinusoidal():
             x=np.mod(x,self.T)
             return self.depth*np.pi/self.T*np.cos(2*np.pi/self.T*x)
         return temp
+    
+    def Volume(self,z_min,z_max):
+        '''
+        计算在深度区间[z_min,z_max]内的材料体积
+        '''
+        def width_at_z(z):
+            '''
+            在深度z处的材料宽度
+            '''
+            s=2*z/self.depth-1
+            return self.T*(0.5-np.arcsin(s)/np.pi)
+        V,_=quad(width_at_z,z_min,z_max)
+        return V
 
 class Blazed():
     def __init__(self,T,angle,fill_factor,n):
