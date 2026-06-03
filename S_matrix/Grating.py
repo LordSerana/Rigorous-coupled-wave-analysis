@@ -70,13 +70,13 @@ class Sinusoidal():
             居中设置正弦光栅
             '''
             x=np.mod(x,self.T)
-            return self.depth/2*(1+np.sin(2*np.pi/self.T*x))
+            return self.depth/2*(1+np.cos(2*np.pi/self.T*x))
         return a_fun
     
     def a_diff(self):
         def temp(x):
             x=np.mod(x,self.T)
-            return self.depth*np.pi/self.T*np.cos(2*np.pi/self.T*x)
+            return -self.depth*np.pi/self.T*np.sin(2*np.pi/self.T*x)
         return temp
     
     def Volume(self,z_min,z_max):
@@ -88,7 +88,7 @@ class Sinusoidal():
             在深度z处的材料宽度
             '''
             s=2*z/self.depth-1
-            return self.T*(0.5-np.arcsin(s)/np.pi)
+            return self.T*(1-np.arccos(s)/np.pi)
         V,_=quad(width_at_z,z_min,z_max)
         return V
 

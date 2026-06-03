@@ -82,7 +82,7 @@ def PercentToFloat(percent_str):
     pass
 
 if __name__=="__main__":
-    file_path='C:/Users/123/Desktop/矩形01仿真对比数据.xlsx'
-    y_true,y_pred=ReadExcelData(file_path,None,'C','G',2)
+    file_path='C:/Users/123/Desktop/44矩阵形式验证.xlsx'
+    y_true,y_pred=ReadExcelData(file_path,None,'B','F',2)
     R2=Calculate_R2(y_true,y_pred)
     print(R2)
