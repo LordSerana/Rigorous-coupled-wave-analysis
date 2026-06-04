@@ -11,7 +11,7 @@ from S_matrix.CalcEffi import calcEffi
 from S_matrix.Plot_Effi import Plot_Effi
 from openpyxl import load_workbook
 
-def Set_Polarization(thetai,phi,n1,n2,wavelength,pTE,pTM,m,Nx,accuracy,grating):
+def Set_Polarization(thetai,phi,n1,n2,wavelength,pTE,pTM,m,Nx,accuracy,grating,Rough=False):
     '''
     thetai:x方向入射角
     phi:y方向入射角
@@ -64,6 +64,9 @@ def Set_Polarization(thetai,phi,n1,n2,wavelength,pTE,pTM,m,Nx,accuracy,grating):
     Constant['W0']=W0
     Constant['V0']=V0
     Constant['W']=W
+    if Rough==True:
+        h=Roughness(0.32*1e-6,Nx,115)
+        Constant['Rough']=h
     return Constant
 
 def Compute(Constant,layers):
@@ -133,8 +136,11 @@ def Slice(layers,grating,n):
         return layers
     return layer_new
 
-def Roughness(Ra):
-    pass
+def Roughness(Ra,Nx,seed=None):
+    rng=np.random.default_rng(seed)
+    h=rng.normal(size=Nx)
+    h=h/np.mean(np.abs(h))*Ra
+    return h
 
 #============仿真设备层==============================
 layers=[
@@ -146,7 +152,7 @@ grating=Sinusoidal(4*1e-6,1,2*1e-6)
 # grating=Triangular(4*1e-6,30,1)
 # grating=Blazed(4*1e-6,30,1,1)
 #====================================================
-Constant=Set_Polarization(0,0,1,1.4482+7.5367j,632.8*1e-9,1,0,50,2**10,1e-9,grating)
+Constant=Set_Polarization(0,0,1,1.4482+7.5367j,632.8*1e-9,1,0,50,2**10,1e-9,grating,Rough=True)
 n=12
 layers=Slice(layers,grating,n)
 Constant=Compute(Constant,layers)
