@@ -6,7 +6,7 @@ from scipy import integrate
 from scipy.linalg import toeplitz
 import scipy.linalg as la
 import decimal
-import Solve_ill_Matrix
+import 探索型.Solve_ill_Matrix as Solve_ill_Matrix
 
 decimal.getcontext().prec=16
 

@@ -133,6 +133,9 @@ def Slice(layers,grating,n):
         return layers
     return layer_new
 
+def Roughness(Ra):
+    pass
+
 #============仿真设备层==============================
 layers=[
     Layer(n=1,t=1*1e-6),
