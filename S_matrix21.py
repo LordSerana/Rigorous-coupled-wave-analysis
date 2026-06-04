@@ -144,7 +144,7 @@ grating=Sinusoidal(4*1e-6,1,2*1e-6)
 # grating=Blazed(4*1e-6,30,1,1)
 #====================================================
 Constant=Set_Polarization(0,0,1,1.4482+7.5367j,632.8*1e-9,1,0,50,2**10,1e-9,grating)
-n=10
+n=12
 layers=Slice(layers,grating,n)
 Constant=Compute(Constant,layers)
 Plot_Effi(Constant,[],[])
