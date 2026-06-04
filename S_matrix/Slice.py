@@ -32,4 +32,15 @@ def Slice(layers,grating,n,Constant):
                 layer=Layer(n=Constant['n2'],t=depth,fill_factor=fill_factor,offset=offset)
                 layer_new.append(layer)
             layer_new.append(layer_last)
+        elif grating.name=="Sinusoidal":
+            for i in range(n):
+                z1=i*depth
+                z2=(i+1)*depth
+                V=grating.Volume(z1,z2)
+                avg_fillfactor=V/depth/grating.T
+                layer=Layer(n=Constant['n2'],t=depth,fill_factor=avg_fillfactor,offset=0)
+                layer_new.append(layer)
+            layer_new.append(layer_last)
+    else:
+        return layers
     return layer_new
