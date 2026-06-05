@@ -8,13 +8,19 @@ def layer_mode(layer,Constant,case='FFT'):
     #####从介电常数序列计算Toeplitze矩阵
     Nx=Constant['Nx']
     m=Constant['n_Tr']//2
-    depth=Constant['depth']/Constant['n']
+    depth=Constant['depth_max']/Constant['n']
     if case=='FFT':
         epsilon=np.ones(Nx,dtype=complex)
         if Constant['n_extra']>1:
-            temp=np.where(Constant['Rough']>(Constant['n_extra']-1)*depth)[0]
+            temp=np.where(Constant['Rough']>(Constant['n_extra']-1)*depth)[0][0]
             epsilon[temp]=Constant['n2']**2
+            Constant['Rough'][temp]=(Constant['n_extra']-1)*depth
             Constant['n_extra']-=1
+        elif Constant['n_extra']==1:
+            temp=np.where(Constant['Rough']>0)[0]
+            epsilon[temp]=Constant['n2']**2
+            Constant['Rough'][temp]=0
+            Constant['n_extra']=0
         else:
             width=int(layer.fill_factor*Nx)
             q0=int(Nx//2)
