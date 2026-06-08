@@ -11,7 +11,7 @@ from S_matrix.CalcEffi import calcEffi
 from S_matrix.Plot_Effi import Plot_Effi
 from openpyxl import load_workbook
 
-def Set_Polarization(thetai,phi,n1,n2,wavelength,pTE,pTM,m,Nx,accuracy,grating,Rough=False):
+def Set_Polarization(thetai,phi,n1,n2,wavelength,pTE,pTM,m,Nx,accuracy,grating,n,Rough=False):
     '''
     thetai:x方向入射角
     phi:y方向入射角
@@ -31,6 +31,7 @@ def Set_Polarization(thetai,phi,n1,n2,wavelength,pTE,pTM,m,Nx,accuracy,grating,R
     Constant['pTE']=pTE
     Constant['pTM']=pTM
     Constant['k0']=2*np.pi/wavelength
+    Constant['n']=n
     n=[0,0,1]
     kinc=Constant['n1']*np.array([np.sin(thetai)*np.cos(phi),np.sin(thetai)*np.sin(phi),np.cos(thetai)])
     Constant['kinc']=kinc
@@ -48,7 +49,7 @@ def Set_Polarization(thetai,phi,n1,n2,wavelength,pTE,pTM,m,Nx,accuracy,grating,R
     Constant['Nx']=Nx#x方向上的傅里叶快速变换采样数
     Constant['accuracy']=accuracy
     Constant['period']=grating.T
-    Constant['depth']=grating.depth
+    Constant['depth_max']=grating.depth
     kx=np.diag(kinc[0]-2*np.pi*Constant['mx']/Constant['k0']/Constant['period'])
     Constant['kx']=kx
     ky=np.zeros((Constant['n_Tr'],Constant['n_Tr']))
@@ -95,15 +96,17 @@ def Compute(Constant,layers):
     Constant['T_effi']=T_effi[real_set_ind]
     return Constant
 
-def Slice(layers,grating,n):
+def Slice(layers,grating,Constant):
     '''
     n:切片数
     layers:传进仿真层,对中间层进行切片,并返回新的layers函数
     '''
+    Constant['n_extra']=0
+    n=Constant['n']
     if grating.name!="Rectangular":
         origin_FillFactor=layers[1].fill_factor
         offset=layers[1].offset
-        depth=Constant['depth']/n#切片层的平均厚度
+        depth=Constant['depth_max']/Constant['n']#切片层的平均厚度
         layer0=layers[0]
         layer_last=layers[-1]
         layer_new=[]
@@ -148,36 +151,37 @@ layers=[
     Layer(n=1.4482+7.5367j,t=2*1e-6,fill_factor=1),
     Layer(n=1.4482+7.5367j,t=4*1e-6)
     ]
-grating=Sinusoidal(4*1e-6,1,2*1e-6)
+# grating=Sinusoidal(4*1e-6,1,2*1e-6)
 # grating=Triangular(4*1e-6,30,1)
-# grating=Blazed(4*1e-6,30,1,1)
+grating=Blazed(4*1e-6,30,1,1)
 #====================================================
-Constant=Set_Polarization(0,0,1,1.4482+7.5367j,632.8*1e-9,1,0,50,2**10,1e-9,grating,Rough=True)
-n=12
-layers=Slice(layers,grating,n)
-Constant=Compute(Constant,layers)
-Plot_Effi(Constant,[],[])
-# file_path='C:/Users/123/Desktop/闪耀光栅30仿真数据.xlsx'
-# wb=load_workbook(file_path)
-# ws=wb.active
-# start_col=2
-# start_row=17#行
-# counter=0
-# save_interval=5
-# for n in range(2,51):
-#     layers=[
-#         Layer(n=1,t=1*1e-6),
-#         Layer(n=1.4482+7.5367j,t=2*1e-6,fill_factor=1,offset=0.5),
-#         Layer(n=1.4482+7.5367j,t=4*1e-6)
-#         ]
-#     layers=Slice(layers,grating,n)
-#     Constant=Compute(Constant,layers)
-#     R5=Constant['R_effi'][1]
-#     ws.cell(row=start_row,column=start_col,value=R5)
-#     counter+=1
-#     start_row+=1
-#     if counter%save_interval==0:
-#         wb.save(file_path)
-#         print(f"已保存{counter}个数据")
-# ws.cell(row=start_row,column=start_col,value="切片数:{},N={}".format(n,101))
-# wb.save(file_path)
+# Constant=Set_Polarization(0,0,1,1.4482+7.5367j,632.8*1e-9,1,0,50,2**10,1e-9,grating,n=12,Rough=False)
+# layers=Slice(layers,grating,Constant)
+# Constant=Compute(Constant,layers)
+# Plot_Effi(Constant,[],[])
+#========================================================
+file_path='C:/Users/123/Desktop/闪耀光栅30仿真数据.xlsx'
+wb=load_workbook(file_path)
+ws=wb.active
+start_col=2
+start_row=17#行
+counter=0
+save_interval=5
+for n in range(2,101):
+    layers=[
+        Layer(n=1,t=1*1e-6),
+        Layer(n=1.4482+7.5367j,t=2*1e-6,fill_factor=1),
+        Layer(n=1.4482+7.5367j,t=4*1e-6)
+        ]
+    Constant=Set_Polarization(0,0,1,1.4482+7.5367j,632.8*1e-9,1,0,50,2**10,1e-9,grating,n)
+    layers=Slice(layers,grating,Constant)
+    Constant=Compute(Constant,layers)
+    R5=Constant['R_effi'][1]
+    ws.cell(row=start_row,column=start_col,value=R5)
+    counter+=1
+    start_row+=1
+    if counter%save_interval==0:
+        wb.save(file_path)
+        print(f"已保存{counter}个数据")
+ws.cell(row=start_row,column=start_col,value="切片数:{},N={}".format(n,101))
+wb.save(file_path)
