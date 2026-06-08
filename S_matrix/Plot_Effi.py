@@ -6,11 +6,8 @@ plt.rcParams['font.sans-serif']=['SimHei','Arial Unicode MS','DejaVu Sans']
 plt.rcParams['axes.unicode_minus']=False#解决plt画图中文乱码问题
 
 def Plot_Effi(Constant,effi=False,error=False):
-    real_mask=np.abs(np.imag(np.diag(Constant['kz'])))<Constant['accuracy']
-    real_set=Constant['mx'][real_mask]
-    real_set_ind=np.where(real_mask)
-    Constant['real_set']=real_set
-    Constant['real_set_ind']=real_set_ind
+    real_mask=np.abs(np.imag(np.diag(Constant['kzref'])))<Constant['accuracy']
+    Ref_set=Constant['Ref_set']
     R_effi=Constant['R_effi']
     # T_effi=Constant['T_effi']
     # Constant['R_effi']=R_effi[real_set_ind]
@@ -18,12 +15,12 @@ def Plot_Effi(Constant,effi=False,error=False):
     fig=plt.figure(figsize=(8,6))
     ##子图1：效率对比
     ax1=plt.subplot(2,2,(1,2))
-    ax1.plot(real_set,Constant['R_effi'],'o-',linewidth=2,markersize=6,color='#1f77b4',label='代码反射效率',markerfacecolor='white',markeredgewidth=2)
+    ax1.plot(Ref_set,Constant['R_effi'],'o-',linewidth=2,markersize=6,color='#1f77b4',label='代码反射效率',markerfacecolor='white',markeredgewidth=2)
     # plt.figure(1)
     # plt.plot(real_set,R_effi[real_set_ind],label='Reflection')
     # plt.plot(real_set,VirtualLab_R,label='VirtualLab')
     if len(effi)!=0:
-        ax1.plot(real_set,effi,'s--',linewidth=2,markersize=6,color='#ff7f0e',label='VirtualLab 反射效率',markerfacecolor='white',markeredgewidth=2)
+        ax1.plot(Ref_set,effi,'s--',linewidth=2,markersize=6,color='#ff7f0e',label='VirtualLab 反射效率',markerfacecolor='white',markeredgewidth=2)
         # plt.plot(real_set,effi,label="VirtualLab_Effi")
     ax1.set_xlabel("衍射级次",fontsize=12,fontweight='bold')
     ax1.set_ylabel("衍射效率",fontsize=12,fontweight='bold')
@@ -34,7 +31,7 @@ def Plot_Effi(Constant,effi=False,error=False):
     ax2=plt.subplot(2,2,3)
     if effi is not None and error:
         abs_error=Constant['R_effi']-effi
-        line1=ax2.plot(real_set,abs_error,'o-',linewidth=2,markersize=6,
+        line1=ax2.plot(Ref_set,abs_error,'o-',linewidth=2,markersize=6,
                        color='#2ca02c',label='绝对误差',markerfacecolor='white',markeredgewidth=2)
         ax2.set_xlabel("衍射级次",fontsize=12,fontweight='bold')
         ax2.set_ylabel("绝对误差",fontsize=12,fontweight='bold',color='#2ca02c')
@@ -51,7 +48,7 @@ def Plot_Effi(Constant,effi=False,error=False):
     if effi is not None and error:
         rel_error=(Constant['R_effi']-effi)/effi
         ax3_twin=ax3.twinx()
-        line2=ax3_twin.plot(real_set,rel_error,'s--',linewidth=2,markersize=6,
+        line2=ax3_twin.plot(Ref_set,rel_error,'s--',linewidth=2,markersize=6,
                             color='#d62728',label='相对误差',markerfacecolor='white',markeredgewidth=2)
         ax3.set_xlabel("衍射级次",fontsize=12,fontweight='bold')
         ax3_twin.set_ylabel("相对误差",fontsize=12,fontweight='bold',color='#d62728')

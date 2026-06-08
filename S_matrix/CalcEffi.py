@@ -2,7 +2,7 @@ import numpy as np
 
 def calcEffi(p,Constant,S_global):
     m=Constant['n_Tr']//2
-    kzref=Constant['kz']
+    kzref=Constant['kzref']
     kx=Constant['kx']
     ky=Constant['ky']
     kinc=Constant['kinc']

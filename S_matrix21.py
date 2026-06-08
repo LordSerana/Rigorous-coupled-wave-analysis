@@ -33,7 +33,8 @@ def Set_Polarization(thetai,phi,n1,n2,wavelength,pTE,pTM,m,Nx,accuracy,grating,n
     Constant['k0']=2*np.pi/wavelength
     Constant['n']=n
     n=[0,0,1]
-    kinc=Constant['n1']*np.array([np.sin(thetai)*np.cos(phi),np.sin(thetai)*np.sin(phi),np.cos(thetai)])
+    kinc=Constant['n1']*np.array([np.sin(Constant['thetai'])*np.cos(Constant['phi']),
+                                  np.sin(Constant['thetai'])*np.sin(Constant['phi']),np.cos(Constant['thetai'])])
     Constant['kinc']=kinc
     if thetai==0:
         aTE=[0,1,0]
@@ -44,20 +45,41 @@ def Set_Polarization(thetai,phi,n1,n2,wavelength,pTE,pTM,m,Nx,accuracy,grating,n
     p=p/np.linalg.norm(p)
     Constant['p']=p
     Constant['n_Tr']=2*m+1#Truncation number
+    Constant['period']=grating.T
+    Constant['depth_max']=grating.depth
     Constant['mx']=np.arange(-(Constant['n_Tr']//2),Constant['n_Tr']//2+1)
     Constant['my']=np.arange(-(Constant['n_Tr']//2),Constant['n_Tr']//2+1)
     Constant['Nx']=Nx#x方向上的傅里叶快速变换采样数
     Constant['accuracy']=accuracy
-    Constant['period']=grating.T
-    Constant['depth_max']=grating.depth
     kx=np.diag(kinc[0]-2*np.pi*Constant['mx']/Constant['k0']/Constant['period'])
+    kx=kx.astype('complex')
     Constant['kx']=kx
     ky=np.zeros((Constant['n_Tr'],Constant['n_Tr']))
+    ky=ky.astype('complex')
     Constant['ky']=ky
+    #====================计算反射侧========================
     kzref=np.zeros((Constant['n_Tr'],Constant['n_Tr']),dtype=complex)
+    temp=Constant['n1']**2
     for i in range(Constant['n_Tr']):
-        kzref[i,i]=np.sqrt(Constant['n1']**2-kx[i,i]**2-ky[i,i]**2,dtype=complex)
-    Constant['kz']=kzref
+        kzref[i,i]=np.sqrt(temp-kx[i,i]**2-ky[i,i]**2,dtype=complex)
+    Constant['kzref']=kzref
+    Ref_mask=np.abs(np.imag(np.diag(Constant['kzref'])))<Constant['accuracy']
+    Ref_set=Constant['mx'][Ref_mask]
+    Ref_set_ind=np.where(Ref_mask)
+    Constant['Ref_set']=Ref_set
+    Constant['Ref_set_ind']=Ref_set_ind
+    #==================计算透射侧=============================
+    kztrn=np.zeros((Constant['n_Tr'],Constant['n_Tr']),dtype=complex)
+    temp=Constant['n2']**2
+    for i in range(Constant['n_Tr']):
+        kztrn[i,i]=np.sqrt(temp-kx[i,i]**2-ky[i,i]**2,dtype=complex)
+    Constant['kztrn']=kztrn
+    Trn_mask=np.abs(np.imag(np.diag(Constant['kztrn'])))<Constant['accuracy']
+    Trn_set=Constant['mx'][Trn_mask]
+    Trn_set_ind=np.where(Trn_mask)
+    Constant['Trn_set']=Trn_set
+    Constant['Trn_set_ind']=Trn_set_ind
+    #==========================================================
     LAM,W=homogeneous_isotropic_matrix(1,1,kx,ky)
     temp=int(W.shape[0]/2)
     W0=W[:temp,:temp]
@@ -74,6 +96,8 @@ def Compute(Constant,layers):
     kx=Constant['kx']
     ky=Constant['ky']
     temp=Constant['n_Tr']//2
+    Ref_set_ind=Constant['Ref_set_ind']
+    Trn_set_ind=Constant['Trn_set_ind']
     S_global=np.block(
         [[np.zeros((4*temp+2,4*temp+2),dtype=complex),np.eye(4*temp+2,dtype=complex)],
          [np.eye(4*temp+2,dtype=complex),np.zeros((4*temp+2,4*temp+2),dtype=complex)]])
@@ -87,13 +111,8 @@ def Compute(Constant,layers):
     S_global=Star(S_global,Ssub)
     S_global=Star(Sref,S_global)
     R_effi,T_effi=calcEffi(Constant['p'],Constant,S_global)
-    real_mask=np.abs(np.imag(np.diag(Constant['kz'])))<Constant['accuracy']
-    real_set=Constant['mx'][real_mask]
-    real_set_ind=np.where(real_mask)
-    Constant['real_set']=real_set
-    Constant['real_set_ind']=real_set_ind
-    Constant['R_effi']=R_effi[real_set_ind]
-    Constant['T_effi']=T_effi[real_set_ind]
+    Constant['R_effi']=R_effi[Ref_set_ind]
+    Constant['T_effi']=T_effi[Trn_set_ind]
     return Constant
 
 def Slice(layers,grating,Constant):
@@ -148,40 +167,40 @@ def Roughness(Ra,Nx,seed=None):
 #============仿真设备层==============================
 layers=[
     Layer(n=1,t=1*1e-6),
-    Layer(n=1.4482+7.5367j,t=2*1e-6,fill_factor=1),
-    Layer(n=1.4482+7.5367j,t=4*1e-6)
+    Layer(n=1.5,t=2*1e-6,fill_factor=1),
+    Layer(n=1.5,t=4*1e-6)
     ]
-# grating=Sinusoidal(4*1e-6,1,2*1e-6)
+grating=Sinusoidal(632.8*1e-9*2,1,632.8*1e-9*2)
 # grating=Triangular(4*1e-6,30,1)
-grating=Blazed(4*1e-6,30,1,1)
+# grating=Blazed(4*1e-6,30,1,1)
 #====================================================
-# Constant=Set_Polarization(0,0,1,1.4482+7.5367j,632.8*1e-9,1,0,50,2**10,1e-9,grating,n=12,Rough=False)
-# layers=Slice(layers,grating,Constant)
-# Constant=Compute(Constant,layers)
-# Plot_Effi(Constant,[],[])
+Constant=Set_Polarization(15,0,1,1.5,632.8*1e-9,1,0,5,2**10,1e-9,grating,n=10,Rough=False)
+layers=Slice(layers,grating,Constant)
+Constant=Compute(Constant,layers)
+Plot_Effi(Constant,[],[])
 #========================================================
-file_path='C:/Users/123/Desktop/闪耀光栅30仿真数据.xlsx'
-wb=load_workbook(file_path)
-ws=wb.active
-start_col=2
-start_row=17#行
-counter=0
-save_interval=5
-for n in range(2,101):
-    layers=[
-        Layer(n=1,t=1*1e-6),
-        Layer(n=1.4482+7.5367j,t=2*1e-6,fill_factor=1),
-        Layer(n=1.4482+7.5367j,t=4*1e-6)
-        ]
-    Constant=Set_Polarization(0,0,1,1.4482+7.5367j,632.8*1e-9,1,0,50,2**10,1e-9,grating,n)
-    layers=Slice(layers,grating,Constant)
-    Constant=Compute(Constant,layers)
-    R5=Constant['R_effi'][1]
-    ws.cell(row=start_row,column=start_col,value=R5)
-    counter+=1
-    start_row+=1
-    if counter%save_interval==0:
-        wb.save(file_path)
-        print(f"已保存{counter}个数据")
-ws.cell(row=start_row,column=start_col,value="切片数:{},N={}".format(n,101))
-wb.save(file_path)
+# file_path='C:/Users/123/Desktop/闪耀光栅30仿真数据.xlsx'
+# wb=load_workbook(file_path)
+# ws=wb.active
+# start_col=2
+# start_row=17#行
+# counter=0
+# save_interval=5
+# for n in range(2,101):
+#     layers=[
+#         Layer(n=1,t=1*1e-6),
+#         Layer(n=1.4482+7.5367j,t=2*1e-6,fill_factor=1),
+#         Layer(n=1.4482+7.5367j,t=4*1e-6)
+#         ]
+#     Constant=Set_Polarization(0,0,1,1.5,632.8*1e-9,1,0,5,2**10,1e-9,grating,n)
+#     layers=Slice(layers,grating,Constant)
+#     Constant=Compute(Constant,layers)
+#     R5=Constant['R_effi'][1]
+#     ws.cell(row=start_row,column=start_col,value=R5)
+#     counter+=1
+#     start_row+=1
+#     if counter%save_interval==0:
+#         wb.save(file_path)
+#         print(f"已保存{counter}个数据")
+# ws.cell(row=start_row,column=start_col,value="切片数:{},N={}".format(n,101))
+# wb.save(file_path)
