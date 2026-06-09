@@ -2,7 +2,8 @@ import numpy as np
 
 def calcEffi(p,Constant,S_global):
     m=Constant['n_Tr']//2
-    kzref=Constant['kzref']
+    kzref=-Constant['kzref']
+    kztrn=Constant['kztrn']
     kx=Constant['kx']
     ky=Constant['ky']
     kinc=Constant['kinc']
@@ -22,9 +23,9 @@ def calcEffi(p,Constant,S_global):
     ty=etrn[2*m+1:]
     tz=-np.linalg.inv(kzref)@(kx@tx+ky@ty)
     r2=abs(rx)**2+abs(ry)**2+abs(rz)**2
-    R=-np.real(-kzref)/np.real(kinc[2])*r2
+    R=-np.real(kzref)/np.real(kinc[2])*r2
     R_effi=np.sum(R,axis=1)
     t2=abs(tx)**2+abs(ty)**2+abs(tz)**2
-    T=np.real(-kzref)/np.real(kinc[2])*t2
+    T=np.real(kztrn)/np.real(kinc[2])*t2
     T_effi=np.sum(T,axis=1)
     return R_effi,T_effi
