@@ -66,8 +66,8 @@ def Plot_Effi(Constant,effi=False,error=False):
     # plt.title("4微米周期矩形光栅")
     # plt.legend()
     # plt.show()
-    print(R_effi)
-    print("sum:"+str(sum(R_effi)))
+    # print(R_effi)
+    # print("sum:"+str(sum(R_effi)))
     # if error!=False:
     #     plt.figure(2)
     #     plt.plot(real_set,Constant['R_effi']-effi,label="绝对误差")
