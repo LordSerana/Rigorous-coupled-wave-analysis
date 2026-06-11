@@ -1,5 +1,7 @@
 import numpy as np
-from Homogeneous_isotropic_matrix import homogeneous_isotropic_matrix
+import sys
+sys.path.append('E:/Project/python')
+from S_matrix.Homogeneous_isotropic_matrix import homogeneous_isotropic_matrix
 
 def Set_Polarization(thetai,phi,n1,n2,wavelength,pTE,pTM,m,Nx,accuracy,grating,n,Rough=False):
     '''
