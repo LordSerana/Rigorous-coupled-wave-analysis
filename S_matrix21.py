@@ -140,8 +140,9 @@ def Slice(layers,grating,Constant):
             layer_new.append(layer_last)
         elif grating.name=="Triangular":
             for i in range(n):
+                # fill_factor=i/n*origin_FillFactor
                 fill_factor=(2*i+1)/2/n*origin_FillFactor
-                offset=-0.5#取0/-0.5都行,即翻转结构
+                offset=0#取0/-0.5都行,即翻转结构
                 layer=Layer(n=Constant['n2'],t=depth,fill_factor=fill_factor,offset=offset)
                 layer_new.append(layer)
             layer_new.append(layer_last)
@@ -167,40 +168,49 @@ def Roughness(Ra,Nx,seed=None):
 #============仿真设备层==============================
 layers=[
     Layer(n=1,t=1*1e-6),
-    Layer(n=1.5,t=2*1e-6,fill_factor=1),
-    Layer(n=1.5,t=4*1e-6)
+    Layer(n=1.4482+7.5367j,t=2*1e-6,fill_factor=0.8),
+    Layer(n=1.4482+7.5367j,t=4*1e-6)
     ]
-grating=Sinusoidal(632.8*1e-9*2,1,632.8*1e-9*2)
-# grating=Triangular(4*1e-6,30,1)
-# grating=Blazed(4*1e-6,30,1,1)
+# grating=Sinusoidal(632.8*1e-9*2,1,632.8*1e-9*2)
+grating=Triangular(2*1e-6,38.5,0.8)
+# grating=Blazed(4*1e-6,34.9,1,1)
 #====================================================
-Constant=Set_Polarization(-15,0,1,1.5,632.8*1e-9,1,0,5,2**10,1e-9,grating,n=10,Rough=False)
+Constant=Set_Polarization(thetai=0,phi=0,n1=1,n2=1.4482+7.5367j,wavelength=632.8*1e-9,
+pTE=1,pTM=0,m=20,Nx=2**10,accuracy=1e-9,grating=grating,n=20,Rough=False)
 layers=Slice(layers,grating,Constant)
 Constant=Compute(Constant,layers)
+print(Constant['R_effi'])
+# # print(Constant['T_effi'])
 Plot_Effi(Constant,[],[])
 #========================================================
-# file_path='C:/Users/123/Desktop/闪耀光栅30仿真数据.xlsx'
+# file_path='C:/Users/123/Desktop/三角光栅2微米扫描数据.xlsx'
 # wb=load_workbook(file_path)
 # ws=wb.active
 # start_col=2
-# start_row=17#行
+# start_row=2#行
 # counter=0
 # save_interval=5
-# for n in range(2,101):
-#     layers=[
-#         Layer(n=1,t=1*1e-6),
-#         Layer(n=1.4482+7.5367j,t=2*1e-6,fill_factor=1),
-#         Layer(n=1.4482+7.5367j,t=4*1e-6)
-#         ]
-#     Constant=Set_Polarization(0,0,1,1.5,632.8*1e-9,1,0,5,2**10,1e-9,grating,n)
-#     layers=Slice(layers,grating,Constant)
-#     Constant=Compute(Constant,layers)
-#     R5=Constant['R_effi'][1]
-#     ws.cell(row=start_row,column=start_col,value=R5)
-#     counter+=1
-#     start_row+=1
-#     if counter%save_interval==0:
-#         wb.save(file_path)
-#         print(f"已保存{counter}个数据")
-# ws.cell(row=start_row,column=start_col,value="切片数:{},N={}".format(n,101))
+# for fill_factor in np.arange(start=0.7,stop=1,step=0.1):
+#     for angle in np.arange(start=5,stop=45.5,step=0.5):
+#         layers=[
+#             Layer(n=1,t=1*1e-6),
+#             Layer(n=1.4482+7.5367j,t=2*1e-6,fill_factor=fill_factor),
+#             Layer(n=1.4482+7.5367j,t=4*1e-6)
+#             ]
+#         # grating=Blazed(4*1e-6,angle=angle,fill_factor=fill_factor,n=1)
+#         grating=Triangular(T=2*1e-6,base_angle=angle,fill_factor=fill_factor)
+#         Constant=Set_Polarization(thetai=0,phi=0,n1=1,n2=1.4482+7.5367j,wavelength=632.8*1e-9,
+#         pTE=1,pTM=0,m=20,Nx=2**10,accuracy=1e-9,grating=grating,n=50)
+
+#         layers=Slice(layers,grating,Constant)
+#         Constant=Compute(Constant,layers)
+#         R3=Constant['R_effi'][0]
+#         ws.cell(row=start_row,column=start_col,value=R3)
+#         counter+=1
+#         start_row+=1
+#         if counter%save_interval==0:
+#             wb.save(file_path)
+#             print(f"已保存{counter}个数据")
+#     start_col+=1
+#     start_row=2
 # wb.save(file_path)
