@@ -11,7 +11,7 @@ from S_matrix.CalcEffi import calcEffi
 from S_matrix.Plot_Effi import Plot_Effi
 from openpyxl import load_workbook
 
-def Set_Polarization(thetai,phi,n1,n2,wavelength,pTE,pTM,m,Nx,accuracy,grating,n,Rough=False):
+def Set_Polarization(thetai,phi,wavelength,pTE,pTM,m,Nx,accuracy,grating,n,layers,Rough=False):
     '''
     thetai:x方向入射角
     phi:y方向入射角
@@ -25,6 +25,8 @@ def Set_Polarization(thetai,phi,n1,n2,wavelength,pTE,pTM,m,Nx,accuracy,grating,n
     Constant={}
     Constant['thetai']=np.radians(thetai)
     Constant['phi']=np.radians(phi)
+    n1=layers[0].n
+    n2=layers[-1].n
     Constant['n1']=n1
     Constant['n2']=n2
     Constant['wavelength']=wavelength
@@ -130,6 +132,7 @@ def Slice(layers,grating,Constant):
         layer_last=layers[-1]
         layer_new=[]
         layer_new.append(layer0)
+        Refrac_idx=layers[1].n
         if grating.name=="Blazed":
             #=============具体来说,实现效果为将堆叠结构重整为左边对齐的闪耀光栅结构
             for i in range(n):
@@ -143,7 +146,7 @@ def Slice(layers,grating,Constant):
                 # fill_factor=i/n*origin_FillFactor
                 fill_factor=(2*i+1)/2/n*origin_FillFactor
                 offset=0#取0/-0.5都行,即翻转结构
-                layer=Layer(n=Constant['n2'],t=depth,fill_factor=fill_factor,offset=offset)
+                layer=Layer(n=Refrac_idx**2,t=depth,fill_factor=fill_factor,offset=offset)
                 layer_new.append(layer)
             layer_new.append(layer_last)
         elif grating.name=="Sinusoidal":
@@ -168,19 +171,22 @@ def Roughness(Ra,Nx,seed=None):
 #============仿真设备层==============================
 layers=[
     Layer(n=1,t=1*1e-6),
-    Layer(n=1.4482+7.5367j,t=2*1e-6,fill_factor=0.8),
-    Layer(n=1.4482+7.5367j,t=4*1e-6)
+    Layer(n=1.4482+7.5367j,t=2*1e-6,fill_factor=0.9),
+    Layer(n=1.4482+7.5367j,t=10*1e-9),
+    Layer(n=1.457,t=4*1e-6)
     ]
 # grating=Sinusoidal(632.8*1e-9*2,1,632.8*1e-9*2)
-grating=Triangular(2*1e-6,38.5,0.8)
-# grating=Blazed(4*1e-6,34.9,1,1)
+grating=Triangular(4*1e-6,36,0.9)
+# grating=Blazed(T=1.67*1e-6,angle=11.1,fill_factor=1,n=1)
 #====================================================
-Constant=Set_Polarization(thetai=0,phi=0,n1=1,n2=1.4482+7.5367j,wavelength=632.8*1e-9,
-pTE=1,pTM=0,m=20,Nx=2**10,accuracy=1e-9,grating=grating,n=20,Rough=False)
+#从左侧入射定义为-，衍射光在0级光左侧为负，右侧为正
+Constant=Set_Polarization(thetai=0,phi=0,wavelength=632.8*1e-9,pTE=1,pTM=0,m=20,Nx=2**10,accuracy=1e-9,
+                          grating=grating,n=40,layers=layers,Rough=False)
 layers=Slice(layers,grating,Constant)
 Constant=Compute(Constant,layers)
 print(Constant['R_effi'])
-# # print(Constant['T_effi'])
+print(f"Sum:{sum(Constant['R_effi'])}")
+# print(Constant['T_effi'])
 Plot_Effi(Constant,[],[])
 #========================================================
 # file_path='C:/Users/123/Desktop/三角光栅2微米扫描数据.xlsx'

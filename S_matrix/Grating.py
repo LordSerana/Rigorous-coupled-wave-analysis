@@ -5,7 +5,6 @@ class Triangular():
     def __init__(self,T,base_angle,fill_factor):
         '''
         T:周期,base_angle:三角光栅底角,fill_factor:占空比,amplitude:光栅槽深
-        n1:入射区域折射率,n2:透射区域折射率
         '''
         self.name="Triangular"
         self.T=T
