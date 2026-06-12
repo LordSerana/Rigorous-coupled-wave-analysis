@@ -3,7 +3,7 @@ import sys
 sys.path.append('E:/Project/python')
 from S_matrix.Homogeneous_isotropic_matrix import homogeneous_isotropic_matrix
 
-def Set_Polarization(thetai,phi,n1,n2,wavelength,pTE,pTM,m,Nx,accuracy,grating,n,Rough=False):
+def Set_Polarization(thetai,phi,wavelength,pTE,pTM,m,Nx,accuracy,grating,n,layers,Rough=False):
     '''
     thetai:x方向入射角
     phi:y方向入射角
@@ -17,6 +17,8 @@ def Set_Polarization(thetai,phi,n1,n2,wavelength,pTE,pTM,m,Nx,accuracy,grating,n
     Constant={}
     Constant['thetai']=np.radians(thetai)
     Constant['phi']=np.radians(phi)
+    n1=layers[0].n
+    n2=layers[-1].n
     Constant['n1']=n1
     Constant['n2']=n2
     Constant['wavelength']=wavelength
