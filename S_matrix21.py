@@ -138,7 +138,7 @@ def Slice(layers,grating,Constant):
             for i in range(n):
                 fill_factor=(2*i+1)/2/n*origin_FillFactor
                 offset=fill_factor/2-origin_FillFactor/2
-                layer=Layer(n=Constant['n2'],t=depth,fill_factor=fill_factor,offset=offset)
+                layer=Layer(n=Refrac_idx,t=depth,fill_factor=fill_factor,offset=offset)
                 layer_new.append(layer)
             layer_new.append(layers[-2])
             layer_new.append(layer_last)
@@ -147,7 +147,7 @@ def Slice(layers,grating,Constant):
                 # fill_factor=i/n*origin_FillFactor
                 fill_factor=(2*i+1)/2/n*origin_FillFactor
                 offset=0#取0/-0.5都行,即翻转结构
-                layer=Layer(n=Refrac_idx**2,t=depth,fill_factor=fill_factor,offset=offset)
+                layer=Layer(n=Refrac_idx,t=depth,fill_factor=fill_factor,offset=offset)
                 layer_new.append(layer)
             layer_new.append(layers[-2])
             layer_new.append(layer_last)
@@ -157,7 +157,7 @@ def Slice(layers,grating,Constant):
                 z2=(i+1)*depth
                 V=grating.Volume(z1,z2)
                 avg_fillfactor=V/depth/grating.T
-                layer=Layer(n=Constant['n2'],t=depth,fill_factor=avg_fillfactor,offset=0)
+                layer=Layer(n=Refrac_idx,t=depth,fill_factor=avg_fillfactor,offset=0)
                 layer_new.append(layer)
             layer_new.append(layers[-2])
             layer_new.append(layer_last)
@@ -174,13 +174,13 @@ def Roughness(Ra,Nx,seed=None):
 #============仿真设备层==============================
 layers=[
     Layer(n=1,t=1*1e-6),
-    Layer(n=1.4482+7.5367j,t=2*1e-6,fill_factor=0.9),
+    Layer(n=1.4482+7.5367j,t=2*1e-6,fill_factor=1),
     Layer(n=1.4482+7.5367j,t=10*1e-9),
-    Layer(n=1.457,t=4*1e-6)
+    Layer(n=1.4482+7.5367j,t=4*1e-6)
     ]
 # grating=Sinusoidal(632.8*1e-9*2,1,632.8*1e-9*2)
-grating=Triangular(4*1e-6,36,0.9)
-# grating=Blazed(T=1.67*1e-6,angle=11.1,fill_factor=1,n=1)
+# grating=Triangular(4*1e-6,36,0.9)
+grating=Blazed(T=1.67*1e-6,angle=11.1,fill_factor=1,n=1)
 #====================================================
 #从左侧入射定义为-，衍射光在0级光左侧为负，右侧为正
 Constant=Set_Polarization(thetai=0,phi=0,wavelength=632.8*1e-9,pTE=1,pTM=0,m=20,Nx=2**10,accuracy=1e-9,

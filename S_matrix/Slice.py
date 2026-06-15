@@ -25,7 +25,7 @@ def Slice(layers,grating,Constant):
             for i in range(n):
                 fill_factor=(2*i+1)/2/n*origin_FillFactor
                 offset=fill_factor/2-origin_FillFactor/2
-                layer=Layer(n=Constant['n2'],t=depth,fill_factor=fill_factor,offset=offset)
+                layer=Layer(n=Refrac_idx,t=depth,fill_factor=fill_factor,offset=offset)
                 layer_new.append(layer)
             layer_new.append(layers[-2])
             layer_new.append(layer_last)
@@ -34,7 +34,7 @@ def Slice(layers,grating,Constant):
                 # fill_factor=i/n*origin_FillFactor
                 fill_factor=(2*i+1)/2/n*origin_FillFactor
                 offset=0#取0/-0.5都行,即翻转结构
-                layer=Layer(n=Refrac_idx**2,t=depth,fill_factor=fill_factor,offset=offset)
+                layer=Layer(n=Refrac_idx,t=depth,fill_factor=fill_factor,offset=offset)
                 layer_new.append(layer)
             layer_new.append(layers[-2])
             layer_new.append(layer_last)
@@ -44,7 +44,7 @@ def Slice(layers,grating,Constant):
                 z2=(i+1)*depth
                 V=grating.Volume(z1,z2)
                 avg_fillfactor=V/depth/grating.T
-                layer=Layer(n=Constant['n2'],t=depth,fill_factor=avg_fillfactor,offset=0)
+                layer=Layer(n=Refrac_idx,t=depth,fill_factor=avg_fillfactor,offset=0)
                 layer_new.append(layer)
             layer_new.append(layers[-2])
             layer_new.append(layer_last)
