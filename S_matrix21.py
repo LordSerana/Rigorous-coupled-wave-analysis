@@ -140,8 +140,8 @@ def Slice(layers,grating,Constant):
                 offset=fill_factor/2-origin_FillFactor/2
                 layer=Layer(n=Refrac_idx,t=depth,fill_factor=fill_factor,offset=offset)
                 layer_new.append(layer)
-            layer_new.append(layers[-2])
-            layer_new.append(layer_last)
+            for i in layers[2:]:
+                layer_new.append(i)
         elif grating.name=="Triangular":
             for i in range(n):
                 # fill_factor=i/n*origin_FillFactor
@@ -149,8 +149,8 @@ def Slice(layers,grating,Constant):
                 offset=0#取0/-0.5都行,即翻转结构
                 layer=Layer(n=Refrac_idx,t=depth,fill_factor=fill_factor,offset=offset)
                 layer_new.append(layer)
-            layer_new.append(layers[-2])
-            layer_new.append(layer_last)
+            for i in layers[2:]:
+                layer_new.append(i)
         elif grating.name=="Sinusoidal":
             for i in range(n):
                 z1=i*depth
@@ -159,8 +159,8 @@ def Slice(layers,grating,Constant):
                 avg_fillfactor=V/depth/grating.T
                 layer=Layer(n=Refrac_idx,t=depth,fill_factor=avg_fillfactor,offset=0)
                 layer_new.append(layer)
-            layer_new.append(layers[-2])
-            layer_new.append(layer_last)
+            for i in layers[2:]:
+                layer_new.append(i)
     else:
         return layers
     return layer_new
@@ -176,7 +176,7 @@ layers=[
     Layer(n=1,t=1*1e-6),
     Layer(n=1.4482+7.5367j,t=2*1e-6,fill_factor=1),
     Layer(n=1.4482+7.5367j,t=10*1e-9),
-    Layer(n=1.4482+7.5367j,t=4*1e-6)
+    Layer(n=1.457,t=4*1e-6)
     ]
 # grating=Sinusoidal(632.8*1e-9*2,1,632.8*1e-9*2)
 # grating=Triangular(4*1e-6,36,0.9)
