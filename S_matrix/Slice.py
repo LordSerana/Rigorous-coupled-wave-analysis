@@ -16,7 +16,6 @@ def Slice(layers,grating,Constant):
         offset=layers[1].offset
         depth=Constant['depth_max']/Constant['n']#切片层的平均厚度
         layer0=layers[0]
-        layer_last=layers[-1]
         layer_new=[]
         layer_new.append(layer0)
         Refrac_idx=layers[1].n

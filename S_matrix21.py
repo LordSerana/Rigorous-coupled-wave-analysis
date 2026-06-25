@@ -129,7 +129,6 @@ def Slice(layers,grating,Constant):
         offset=layers[1].offset
         depth=Constant['depth_max']/Constant['n']#切片层的平均厚度
         layer0=layers[0]
-        layer_last=layers[-1]
         layer_new=[]
         layer_new.append(layer0)
         Refrac_idx=layers[1].n
@@ -174,13 +173,12 @@ def Roughness(Ra,Nx,seed=None):
 #============仿真设备层==============================
 layers=[
     Layer(n=1,t=1*1e-6),
-    Layer(n=1.4482+7.5367j,t=2*1e-6,fill_factor=1),
-    Layer(n=1.4482+7.5367j,t=10*1e-9),
-    Layer(n=1.457,t=4*1e-6)
+    Layer(n=1.4482+7.5367j,t=2.17*1e-6,fill_factor=1),
+    Layer(n=1.4482+7.5367j,t=4*1e-6),
     ]
-# grating=Sinusoidal(632.8*1e-9*2,1,632.8*1e-9*2)
+grating=Sinusoidal(4*1e-6,1,2.17*1e-6)
 # grating=Triangular(4*1e-6,36,0.9)
-grating=Blazed(T=1.67*1e-6,angle=11.1,fill_factor=1,n=1)
+# grating=Blazed(T=1.67*1e-6,angle=11.1,fill_factor=1,n=1)
 #====================================================
 #从左侧入射定义为-，衍射光在0级光左侧为负，右侧为正
 Constant=Set_Polarization(thetai=0,phi=0,wavelength=632.8*1e-9,pTE=1,pTM=0,m=20,Nx=2**10,accuracy=1e-9,
