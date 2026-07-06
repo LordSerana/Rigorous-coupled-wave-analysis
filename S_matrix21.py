@@ -49,6 +49,7 @@ def Set_Polarization(thetai,phi,wavelength,pTE,pTM,m,Nx,accuracy,grating,n,layer
     Constant['n_Tr']=2*m+1#Truncation number
     Constant['period']=grating.T
     Constant['depth_max']=grating.depth
+    Constant['fill_factor']=grating.fill_factor
     Constant['mx']=np.arange(-(Constant['n_Tr']//2),Constant['n_Tr']//2+1)
     Constant['my']=np.arange(-(Constant['n_Tr']//2),Constant['n_Tr']//2+1)
     Constant['Nx']=Nx#x方向上的傅里叶快速变换采样数
@@ -125,7 +126,7 @@ def Slice(layers,grating,Constant):
     Constant['n_extra']=0
     n=Constant['n']
     if grating.name!="Rectangular":
-        origin_FillFactor=layers[1].fill_factor
+        origin_FillFactor=Constant['fill_factor']
         offset=layers[1].offset
         depth=Constant['depth_max']/Constant['n']#切片层的平均厚度
         layer0=layers[0]
@@ -173,21 +174,24 @@ def Roughness(Ra,Nx,seed=None):
 #============仿真设备层==============================
 layers=[
     Layer(n=1,t=1*1e-6),
-    Layer(n=1.4482+7.5367j,t=2.17*1e-6,fill_factor=1),
+    Layer(n=1.4482+7.5367j),
     Layer(n=1.4482+7.5367j,t=4*1e-6),
     ]
-grating=Sinusoidal(4*1e-6,1,2.17*1e-6)
-# grating=Triangular(4*1e-6,36,0.9)
+# grating=Sinusoidal(1.2*1e-6,1,0.24*1e-6)
+grating=Triangular(4*1e-6,36,0.9)
 # grating=Blazed(T=1.67*1e-6,angle=11.1,fill_factor=1,n=1)
 #====================================================
 #从左侧入射定义为-，衍射光在0级光左侧为负，右侧为正
-Constant=Set_Polarization(thetai=0,phi=0,wavelength=632.8*1e-9,pTE=1,pTM=0,m=20,Nx=2**10,accuracy=1e-9,
+Constant=Set_Polarization(thetai=-58.06,phi=0,wavelength=632.8*1e-9,pTE=1,pTM=0,m=20,Nx=2**10,accuracy=1e-9,
                           grating=grating,n=40,layers=layers,Rough=False)
 layers=Slice(layers,grating,Constant)
 Constant=Compute(Constant,layers)
-print(Constant['R_effi'])
+#=========打印输出
+start_order=Constant['Ref_set'][0]
+for order,efficiency in enumerate(Constant['R_effi']):
+    print(f"{order+start_order}:{efficiency:.4f}")
+# print(Constant['R_effi'])
 print(f"Sum:{sum(Constant['R_effi'])}")
-# print(Constant['T_effi'])
 Plot_Effi(Constant,[],[])
 #========================================================
 # file_path='C:/Users/123/Desktop/三角光栅2微米扫描数据.xlsx'
