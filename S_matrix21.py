@@ -10,6 +10,7 @@ from S_matrix.Build_scatter_side import build_scatter_side
 from S_matrix.CalcEffi import calcEffi
 from S_matrix.Plot_Effi import Plot_Effi
 from openpyxl import load_workbook
+from S_matrix.CheckConvergence import CheckConvergence
 
 def Set_Polarization(thetai,phi,wavelength,pTE,pTM,m,Nx,accuracy,grating,n,layers,Rough=False):
     '''
@@ -21,6 +22,7 @@ def Set_Polarization(thetai,phi,wavelength,pTE,pTM,m,Nx,accuracy,grating,n,layer
     pTE:TE分量
     pTM:TM分量
     m:截断数
+    n:切片数
     '''
     Constant={}
     Constant['thetai']=np.radians(thetai)
@@ -137,6 +139,7 @@ def Slice(layers,grating,Constant):
             #=============具体来说,实现效果为将堆叠结构重整为左边对齐的闪耀光栅结构
             for i in range(n):
                 fill_factor=(2*i+1)/2/n*origin_FillFactor
+                # fill_factor=i/n*origin_FillFactor
                 offset=fill_factor/2-origin_FillFactor/2
                 layer=Layer(n=Refrac_idx,t=depth,fill_factor=fill_factor,offset=offset)
                 layer_new.append(layer)
@@ -153,10 +156,18 @@ def Slice(layers,grating,Constant):
                 layer_new.append(i)
         elif grating.name=="Sinusoidal":
             for i in range(n):
+                #等体积切片
                 z1=i*depth
                 z2=(i+1)*depth
                 V=grating.Volume(z1,z2)
                 avg_fillfactor=V/depth/grating.T
+                #等厚切片=======================================================
+                # z=(i+1)*depth
+                # if z>grating.depth:
+                #     z=grating.depth
+                # width=grating.Width_at_z(z)
+                # avg_fillfactor=width/grating.T
+                #===============================================================
                 layer=Layer(n=Refrac_idx,t=depth,fill_factor=avg_fillfactor,offset=0)
                 layer_new.append(layer)
             for i in layers[2:]:
@@ -177,22 +188,38 @@ layers=[
     Layer(n=1.4482+7.5367j),
     Layer(n=1.4482+7.5367j,t=4*1e-6),
     ]
-# grating=Sinusoidal(1.2*1e-6,1,0.24*1e-6)
-grating=Triangular(4*1e-6,36,0.9)
-# grating=Blazed(T=1.67*1e-6,angle=11.1,fill_factor=1,n=1)
+# grating=Sinusoidal(4*1e-6,1,2*1e-6)
+# grating=Triangular(4*1e-6,36,1)
+grating=Blazed(T=4*1e-6,angle=30,fill_factor=1,n=1)
 #====================================================
 #从左侧入射定义为-，衍射光在0级光左侧为负，右侧为正
-Constant=Set_Polarization(thetai=-58.06,phi=0,wavelength=632.8*1e-9,pTE=1,pTM=0,m=20,Nx=2**10,accuracy=1e-9,
-                          grating=grating,n=40,layers=layers,Rough=False)
-layers=Slice(layers,grating,Constant)
-Constant=Compute(Constant,layers)
+Result_last=0
+for n in range(5,50,1):
+    layers=[
+        Layer(n=1,t=1*1e-6),
+        Layer(n=1.4482+7.5367j),
+        Layer(n=1.4482+7.5367j,t=4*1e-6),
+        ]
+    Constant=Set_Polarization(thetai=0,phi=0,wavelength=632.8*1e-9,pTE=1,pTM=0,m=40,Nx=2**10,accuracy=1e-9,
+                            grating=grating,n=n,layers=layers,Rough=False)
+    layers=Slice(layers,grating,Constant)
+    Constant=Compute(Constant,layers)
+    Result_new=Constant['R_effi']
+    if n==5:
+        continue
+    else:
+        Error=CheckConvergence(Result_last=Result_last,Result_new=Result_new)
+        print(f"n={n},Error={Error}")
+        if Error <0.05:
+            break
+    Result_last=Result_new
 #=========打印输出
 start_order=Constant['Ref_set'][0]
 for order,efficiency in enumerate(Constant['R_effi']):
     print(f"{order+start_order}:{efficiency:.4f}")
 # print(Constant['R_effi'])
 print(f"Sum:{sum(Constant['R_effi'])}")
-Plot_Effi(Constant,[],[])
+# Plot_Effi(Constant,[],[])
 #========================================================
 # file_path='C:/Users/123/Desktop/三角光栅2微米扫描数据.xlsx'
 # wb=load_workbook(file_path)

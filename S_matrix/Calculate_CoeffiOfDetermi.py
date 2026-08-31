@@ -96,12 +96,12 @@ def Caululate_Precision(y_measure,y_reference):
     return precision
 
 if __name__=="__main__":
-    file_path='C:/Users/123/Desktop/位移测量(精确版).xlsx'
+    file_path='C:/Users/123/Desktop/RCWA闪耀光栅+1级验证.xlsx'
     y_true,y_pred=ReadExcelData(file_path=file_path,sheet_name=None,
-                                true_col='T',pred_col='S',start_row=3)
-    # R2=Calculate_R2(y_true,y_pred)
+                                true_col='B',pred_col='C',start_row=2)
+    R2=Calculate_R2(y_true,y_pred)
     # RMSE=Calculate_RMSE(y_true,y_pred)
-    # print(R2)
+    print(R2)
     # print(RMSE)
-    precision=Caululate_Precision(y_pred,y_true)
-    print(precision)
+    # precision=Caululate_Precision(y_pred,y_true)
+    # print(precision)

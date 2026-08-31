@@ -78,6 +78,13 @@ class Sinusoidal():
             return -self.depth*np.pi/self.T*np.sin(2*np.pi/self.T*x)
         return temp
     
+    def Width_at_z(self,z):
+        '''
+        在深度z处的材料宽度
+        '''
+        s=2*z/self.depth-1
+        return self.T*(1-np.arccos(s)/np.pi)
+    
     def Volume(self,z_min,z_max):
         '''
         计算在深度区间[z_min,z_max]内的材料体积
