@@ -3,6 +3,7 @@ import sys
 sys.path.append('E:/Project/python')
 from S_matrix.Set_polarization import Set_Polarization
 from S_matrix.Grating import Rectangular
+from S_matrix.Layer import Layer
 
 def Calculate_diffraction_angle(thetai,phi,wavelength,period,n1):
     kinc=n1*np.array([np.sin(thetai)*np.cos(phi),np.sin(thetai)*np.sin(phi),np.cos(thetai)])
@@ -21,9 +22,14 @@ def Calculate_diffraction_angle(thetai,phi,wavelength,period,n1):
     return real_set
 
 if __name__=='__main__':
+    layers=[
+        Layer(n=1,t=1*1e-6),
+        Layer(n=1.4482+7.5367j,t=2.17*1e-6,fill_factor=1),
+        Layer(n=1.4482+7.5367j,t=4*1e-6),
+        ]
     grating=Rectangular(T=4*1e-6,fill_factor=0.5,depth=2*1e-6)
-    Constant=Set_Polarization(thetai=-71.66,phi=0,n1=1,n2=1.4482+7.5367j,wavelength=632.8*1e-9,
-                              pTE=1,pTM=0,m=20,Nx=2**10,accuracy=1e-9,grating=grating,n=20,Rough=False)
+    Constant=Set_Polarization(thetai=-58.06,phi=0,wavelength=632.8*1e-9,pTE=1,pTM=0,
+                              m=20,Nx=2**10,accuracy=1e-9,grating=grating,n=20,layers=layers,Rough=False)
     Ref_set=Constant['Ref_set']
     thetam=np.arange(2*len(Ref_set),dtype=float).reshape((len(Ref_set),2))
     i=0

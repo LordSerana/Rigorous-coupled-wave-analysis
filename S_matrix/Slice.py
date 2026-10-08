@@ -41,6 +41,9 @@ def Slice(layers,grating,Constant):
             for i in range(n):
                 z1=i*depth
                 z2=(i+1)*depth
+                #=========防止浮点数计算溢出
+                if z2>grating.depth:
+                    z2=grating.depth
                 V=grating.Volume(z1,z2)
                 avg_fillfactor=V/depth/grating.T
                 layer=Layer(n=Refrac_idx,t=depth,fill_factor=avg_fillfactor,offset=0)
