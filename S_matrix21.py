@@ -139,7 +139,9 @@ def Slice(layers,grating,Constant):
         if grating.name=="Blazed":
             #=============具体来说,实现效果为将堆叠结构重整为左边对齐的闪耀光栅结构
             for i in range(n):
+                #等体积切片法
                 fill_factor=(2*i+1)/2/n*origin_FillFactor
+                #等厚切片法
                 # fill_factor=i/n*origin_FillFactor
                 offset=fill_factor/2-origin_FillFactor/2
                 layer=Layer(n=Refrac_idx,t=depth,fill_factor=fill_factor,offset=offset)
@@ -148,7 +150,9 @@ def Slice(layers,grating,Constant):
                 layer_new.append(i)
         elif grating.name=="Triangular":
             for i in range(n):
+                #等厚切片
                 # fill_factor=i/n*origin_FillFactor
+                #等体积切片法
                 fill_factor=(2*i+1)/2/n*origin_FillFactor
                 offset=0#取0/-0.5都行,即翻转结构
                 layer=Layer(n=Refrac_idx,t=depth,fill_factor=fill_factor,offset=offset)
@@ -158,16 +162,16 @@ def Slice(layers,grating,Constant):
         elif grating.name=="Sinusoidal":
             for i in range(n):
                 #等体积切片
-                # z1=i*depth
-                # z2=(i+1)*depth
-                # V=grating.Volume(z1,z2)
-                # avg_fillfactor=V/depth/grating.T
+                z1=i*depth
+                z2=(i+1)*depth
+                V=grating.Volume(z1,z2)
+                avg_fillfactor=V/depth/grating.T
                 #等厚切片=======================================================
-                z=(i+1)*depth
-                if z>grating.depth:
-                    z=grating.depth
-                width=grating.Width_at_z(z)
-                avg_fillfactor=width/grating.T
+                # z=(i+1)*depth
+                # if z>grating.depth:
+                #     z=grating.depth
+                # width=grating.Width_at_z(z)
+                # avg_fillfactor=width/grating.T
                 #===============================================================
                 layer=Layer(n=Refrac_idx,t=depth,fill_factor=avg_fillfactor,offset=0)
                 layer_new.append(layer)
@@ -176,6 +180,33 @@ def Slice(layers,grating,Constant):
     else:
         return layers
     return layer_new
+
+def generate_height_array(grating, T, Nx):
+    """
+    返回两个数组：
+    x:一个周期内的离散x坐标(长度为Nx)
+    s:每个x处材料-空气界面的z坐标(从光栅顶部算起，向下为正)
+    """
+    x=np.linspace(0, T, Nx, endpoint=False)  # 周期内均匀采样
+    
+    if grating.name == "Triangular":
+        # 以三角槽为例，材料存在于 s(x) 以下
+        # 假设三角形顶点在中心，底边占满整个周期
+        # 则边界高度 s(x) = depth * 2 * |x - T/2| / T  （形成倒V形槽）
+        half = T / 2
+        s = grating.depth * 2 * np.abs(x - half) / T
+    elif grating.name == "Blazed":
+        # 闪耀光栅：锯齿形轮廓，左低右高（或左高右低）
+        s = grating.depth * (x / T)   # 0到depth线性变化，形成锯齿
+    elif grating.name == "Sinusoidal":
+        s = grating.depth * 0.5 * (1 + np.sin(2 * np.pi * x / T - np.pi/2))  # 调整相位使顶部/底部合理
+    elif grating.name == "Rectangular":
+        # 矩形光栅，直接按占空比生成0和depth的阶跃
+        s = np.where(np.mod(x, T) < grating.fill_factor * T, 0.0, grating.depth)
+    else:
+        raise ValueError("Unknown grating type")
+        
+    return x, s
 
 def Roughness(Ra,Nx,seed=None):
     rng=np.random.default_rng(seed)
