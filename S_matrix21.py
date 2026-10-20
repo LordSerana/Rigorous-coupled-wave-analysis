@@ -12,6 +12,9 @@ from S_matrix.Plot_Effi import Plot_Effi
 from openpyxl import load_workbook
 from S_matrix.CheckConvergence import CheckConvergence
 import time
+from matplotlib import pyplot as plt
+
+#暂时固定该版本
 
 def Set_Polarization(thetai,phi,wavelength,pTE,pTM,m,Nx,accuracy,grating,n,layers,Rough=False):
     '''
@@ -291,10 +294,11 @@ grating=Sinusoidal(4*1e-6,1,2*1e-6)
 #===============平常情况
 Constant=Set_Polarization(thetai=0,phi=0,wavelength=632.8*1e-9,pTE=1,pTM=0,m=40,Nx=2**10,accuracy=1e-9,
                         grating=grating,n=50,layers=layers,Rough=False)
-# layers=Slice(layers,grating,Constant)
-x,s_ideal=Generate_height_array(grating=grating,T=grating.T,Nx=Constant['Nx'])
-s_rough=Add_roughness(s=s_ideal,T=grating.T,Nx=Constant['Nx'],rms=1*1e-9,corr_length=0.2*grating.T,seed=648)
-
+layers=Slice(layers,grating,Constant)
+# x,s_ideal=Generate_height_array(grating=grating,T=grating.T,Nx=Constant['Nx'])
+# s_rough=Add_roughness(s=s_ideal,T=grating.T,Nx=Constant['Nx'],rms=1*1e-9,corr_length=0.2*grating.T,seed=648)
+# plt.plot(x,s_rough)
+# plt.show()
 Constant=Compute(Constant,layers)
 #=========打印输出
 start_order=Constant['Ref_set'][0]
