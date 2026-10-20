@@ -93,9 +93,6 @@ def Set_Polarization(thetai,phi,wavelength,pTE,pTM,m,Nx,accuracy,grating,n,layer
     Constant['W0']=W0
     Constant['V0']=V0
     Constant['W']=W
-    if Rough==True:
-        h=Roughness(0.32*1e-6,Nx,115)
-        Constant['Rough']=h
     return Constant
 
 def Compute(Constant,layers):
@@ -181,8 +178,9 @@ def Slice(layers,grating,Constant):
         return layers
     return layer_new
 
-def generate_height_array(grating, T, Nx):
+def Generate_height_array(grating, T, Nx):
     """
+    T:光栅周期
     返回两个数组：
     x:一个周期内的离散x坐标(长度为Nx)
     s:每个x处材料-空气界面的z坐标(从光栅顶部算起，向下为正)
@@ -193,26 +191,67 @@ def generate_height_array(grating, T, Nx):
         # 以三角槽为例，材料存在于 s(x) 以下
         # 假设三角形顶点在中心，底边占满整个周期
         # 则边界高度 s(x) = depth * 2 * |x - T/2| / T  （形成倒V形槽）
-        half = T / 2
-        s = grating.depth * 2 * np.abs(x - half) / T
+        half=T/2
+        s=grating.depth*2*np.abs(x-half)/T
     elif grating.name == "Blazed":
         # 闪耀光栅：锯齿形轮廓，左低右高（或左高右低）
-        s = grating.depth * (x / T)   # 0到depth线性变化，形成锯齿
+        s=grating.depth*(x/T)#0到depth线性变化，形成锯齿
     elif grating.name == "Sinusoidal":
-        s = grating.depth * 0.5 * (1 + np.sin(2 * np.pi * x / T - np.pi/2))  # 调整相位使顶部/底部合理
+        s=grating.depth*0.5*(1+np.sin(2*np.pi*x/T-np.pi/2))#调整相位使顶部/底部合理
     elif grating.name == "Rectangular":
         # 矩形光栅，直接按占空比生成0和depth的阶跃
-        s = np.where(np.mod(x, T) < grating.fill_factor * T, 0.0, grating.depth)
+        s = np.where(np.mod(x,T)<grating.fill_factor*T,0.0,grating.depth)
     else:
         raise ValueError("Unknown grating type")
-        
     return x, s
 
-def Roughness(Ra,Nx,seed=None):
-    rng=np.random.default_rng(seed)
-    h=rng.normal(size=Nx)
-    h=h/np.mean(np.abs(h))*Ra
-    return h
+def Add_roughness(s, T, Nx, rms, corr_length, seed=None):
+    '''
+    RMS=1.25*Ra,具有单位
+    corr_length=0.05~0.3*T
+    '''
+    rng = np.random.default_rng(seed)
+    # 生成带有一定空间相关性的随机扰动
+    if corr_length is None or corr_length <= 0:
+        rough = rng.normal(0, rms, Nx)
+    else:
+        # 使用傅里叶滤波生成高斯相关的粗糙度
+        dx = T / Nx
+        k = np.fft.fftfreq(Nx, d=dx) * 2 * np.pi   # 空间角频率
+        S = np.exp(-(k * corr_length / 2.0) ** 2)  # 高斯功率谱
+        S[0] = 0  # 去掉均值，保证平均高度不变
+        amp = np.sqrt(S)
+        phases = rng.uniform(0, 2*np.pi, Nx)
+        z = amp * np.exp(1j * phases)
+        rough = np.fft.ifft(z).real
+        # 归一化到指定RMS
+        rough = rough / np.std(rough) * rms
+    return s + rough
+
+def slice_from_height_array(x, s, T, z_i, z_i1):
+    """
+    根据高度数组 s 计算第 i 层的 fill_factor 和 offset。
+    约定：材料存在于 z > s(x) 的区域。
+    """
+    # 材料在本层内的法向厚度（沿z方向）：
+    # 若 s(x) < z_i   -> 整个切片都是材料，长度 = dz
+    # 若 z_i < s(x) < z_i1 -> 材料从 s(x) 到 z_i1，长度 = z_i1 - s(x)
+    # 若 s(x) >= z_i1 -> 本层无材料
+    length = np.maximum(0, z_i1 - np.maximum(s, z_i))
+    
+    fill_factor = np.mean(length) / (z_i1 - z_i)
+    
+    if fill_factor > 0:
+        # 计算材料区域的质心，用于确定offset
+        x_norm = x / T          # 归一化到 [0,1)
+        weights = length
+        center = np.sum(x_norm * weights) / np.sum(weights)
+        # 通常RCWA中offset定义为相对单元中心的偏移
+        offset = center - 0.5
+    else:
+        offset = 0.0
+    
+    return fill_factor, offset
 
 #============仿真设备层==============================
 layers=[
@@ -226,34 +265,37 @@ grating=Sinusoidal(4*1e-6,1,2*1e-6)
 #====================================================
 #从左侧入射定义为-，衍射光在0级光左侧为负，右侧为正
 #=======切片收敛性校验==========================
-Result_last=0
-start_time=time.time()
-for n in range(5,150,1):
-    layers=[
-        Layer(n=1,t=1*1e-6),
-        Layer(n=1.4482+7.5367j),
-        Layer(n=1.4482+7.5367j,t=4*1e-6),
-        ]
-    Constant=Set_Polarization(thetai=0,phi=0,wavelength=632.8*1e-9,pTE=1,pTM=0,m=50,Nx=2**10,accuracy=1e-9,
-                            grating=grating,n=n,layers=layers,Rough=False)
-    layers=Slice(layers,grating,Constant)
-    Constant=Compute(Constant,layers)
-    Result_new=Constant['R_effi']
-    if n==5:
-        continue
-    else:
-        Error=CheckConvergence(Result_last=Result_last,Result_new=Result_new)
-        print(f"n={n},Error={Error}")
-        if Error <0.03:
-            end_time=time.time()
-            print(f"计算所花时间为:{end_time-start_time}")
-            break
-    Result_last=Result_new
+# Result_last=0
+# start_time=time.time()
+# for n in range(5,150,1):
+#     layers=[
+#         Layer(n=1,t=1*1e-6),
+#         Layer(n=1.4482+7.5367j),
+#         Layer(n=1.4482+7.5367j,t=4*1e-6),
+#         ]
+#     Constant=Set_Polarization(thetai=0,phi=0,wavelength=632.8*1e-9,pTE=1,pTM=0,m=50,Nx=2**10,accuracy=1e-9,
+#                             grating=grating,n=n,layers=layers,Rough=False)
+#     layers=Slice(layers,grating,Constant)
+#     Constant=Compute(Constant,layers)
+#     Result_new=Constant['R_effi']
+#     if n==5:
+#         continue
+#     else:
+#         Error=CheckConvergence(Result_last=Result_last,Result_new=Result_new)
+#         print(f"n={n},Error={Error}")
+#         if Error <0.03:
+#             end_time=time.time()
+#             print(f"计算所花时间为:{end_time-start_time}")
+#             break
+#     Result_last=Result_new
 #===============平常情况
-# Constant=Set_Polarization(thetai=0,phi=0,wavelength=632.8*1e-9,pTE=1,pTM=0,m=40,Nx=2**10,accuracy=1e-9,
-#                         grating=grating,n=50,layers=layers,Rough=False)
+Constant=Set_Polarization(thetai=0,phi=0,wavelength=632.8*1e-9,pTE=1,pTM=0,m=40,Nx=2**10,accuracy=1e-9,
+                        grating=grating,n=50,layers=layers,Rough=False)
 # layers=Slice(layers,grating,Constant)
-# Constant=Compute(Constant,layers)
+x,s_ideal=Generate_height_array(grating=grating,T=grating.T,Nx=Constant['Nx'])
+s_rough=Add_roughness(s=s_ideal,T=grating.T,Nx=Constant['Nx'],rms=1*1e-9,corr_length=0.2*grating.T,seed=648)
+
+Constant=Compute(Constant,layers)
 #=========打印输出
 start_order=Constant['Ref_set'][0]
 for order,efficiency in enumerate(Constant['R_effi']):
