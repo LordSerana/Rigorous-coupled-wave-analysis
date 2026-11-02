@@ -2,7 +2,9 @@ import numpy as np
 import sys
 sys.path.append('E:/Project/python')
 from S_matrix.Layer import Layer
-
+from S_matrix.Generate_height_array import Generate_height_array
+from S_matrix.Add_roughness import Add_roughness
+from S_matrix.Slice_from_height_array import slice_from_height_array
 #=======切片算法
 def Slice(layers,grating,Constant):
     '''
@@ -10,47 +12,82 @@ def Slice(layers,grating,Constant):
     layers:传进仿真层,对中间层进行切片,并返回新的layers函数
     n_extra参数应该只是上一版本掺入粗糙度参数的中间产物,应该可以去掉了
     '''
-    Constant['n_extra']=0
     n=Constant['n']
-    if grating.name!="Rectangular":
-        origin_FillFactor=layers[1].fill_factor
-        offset=layers[1].offset
-        depth=Constant['depth_max']/Constant['n']#切片层的平均厚度
-        layer0=layers[0]
-        layer_new=[]
-        layer_new.append(layer0)
-        Refrac_idx=layers[1].n
-        if grating.name=="Blazed":
-            #=============具体来说,实现效果为将堆叠结构重整为左边对齐的闪耀光栅结构
-            for i in range(n):
-                fill_factor=(2*i+1)/2/n*origin_FillFactor
-                offset=fill_factor/2-origin_FillFactor/2
-                layer=Layer(n=Refrac_idx,t=depth,fill_factor=fill_factor,offset=offset)
-                layer_new.append(layer)
-            for i in layers[2:]:
-                layer_new.append(i)
-        elif grating.name=="Triangular":
-            for i in range(n):
-                # fill_factor=i/n*origin_FillFactor
-                fill_factor=(2*i+1)/2/n*origin_FillFactor
-                offset=0#取0/-0.5都行,即翻转结构
-                layer=Layer(n=Refrac_idx,t=depth,fill_factor=fill_factor,offset=offset)
-                layer_new.append(layer)
-            for i in layers[2:]:
-                layer_new.append(i)
-        elif grating.name=="Sinusoidal":
-            for i in range(n):
-                z1=i*depth
-                z2=(i+1)*depth
-                #=========防止浮点数计算溢出
-                if z2>grating.depth:
-                    z2=grating.depth
-                V=grating.Volume(z1,z2)
-                avg_fillfactor=V/depth/grating.T
-                layer=Layer(n=Refrac_idx,t=depth,fill_factor=avg_fillfactor,offset=0)
-                layer_new.append(layer)
-            for i in layers[2:]:
-                layer_new.append(i)
+    if Constant['Rough']==False:
+        if grating.name!="Rectangular":
+            origin_FillFactor=layers[1].fill_factor
+            offset=layers[1].offset
+            depth=Constant['depth_max']/Constant['n']#切片层的平均厚度
+            layer0=layers[0]
+            layer_new=[]
+            layer_new.append(layer0)
+            Refrac_idx=layers[1].n
+            if grating.name=="Blazed":
+                #=============具体来说,实现效果为将堆叠结构重整为左边对齐的闪耀光栅结构
+                for i in range(n):
+                    fill_factor=(2*i+1)/2/n*origin_FillFactor
+                    offset=fill_factor/2-origin_FillFactor/2
+                    layer=Layer(n=Refrac_idx,t=depth,fill_factor=fill_factor,offset=offset)
+                    layer_new.append(layer)
+                for i in layers[2:]:
+                    layer_new.append(i)
+            elif grating.name=="Triangular":
+                for i in range(n):
+                    # fill_factor=i/n*origin_FillFactor
+                    fill_factor=(2*i+1)/2/n*origin_FillFactor
+                    offset=0#取0/-0.5都行,即翻转结构
+                    layer=Layer(n=Refrac_idx,t=depth,fill_factor=fill_factor,offset=offset)
+                    layer_new.append(layer)
+                for i in layers[2:]:
+                    layer_new.append(i)
+            elif grating.name=="Sinusoidal":
+                for i in range(n):
+                    z1=i*depth
+                    z2=(i+1)*depth
+                    #=========防止浮点数计算溢出
+                    if z2>grating.depth:
+                        z2=grating.depth
+                    V=grating.Volume(z1,z2)
+                    avg_fillfactor=V/depth/grating.T
+                    layer=Layer(n=Refrac_idx,t=depth,fill_factor=avg_fillfactor,offset=0)
+                    layer_new.append(layer)
+                for i in layers[2:]:
+                    layer_new.append(i)
+        else:
+            return layers
     else:
-        return layers
-    return layer_new
+        '''
+        包含粗糙度的切片情况
+        '''
+        if grating.name != "Rectangular":
+            # 假设 grating 已经有 height_array 属性（如果没有，先生成理想高度并加粗糙度）
+            if not hasattr(grating, 'height_array'):
+                x, s = Generate_height_array(grating, grating.T, Constant['Nx'])
+                if 'roughness_rms' in Constant:
+                    s = Add_roughness(s, grating.T, Constant['Nx'], 
+                                    rms=Constant['roughness_rms'],
+                                    corr_length=Constant['corr_length'],
+                                    seed=Constant.get('seed', None))
+                grating.height_array = s
+            else:
+                s = grating.height_array
+                x = np.linspace(0, grating.T, len(s), endpoint=False)
+            
+            layer0 = layers[0]
+            layer_new = [layer0]
+            Refrac_idx = layers[1].n
+            depth = Constant['depth_max'] / n   # 每层厚度
+            
+            for i in range(n):
+                z_i = i * depth
+                z_i1 = (i + 1) * depth
+                fill_factor, offset = slice_from_height_array(x, s, grating.T, z_i, z_i1)
+                layer = Layer(n=Refrac_idx, t=depth, fill_factor=fill_factor, offset=offset)
+                layer_new.append(layer)
+            
+            # 加上基底等后续层
+            for layer in layers[2:]:
+                layer_new.append(layer)
+            return layer_new
+        else:
+            return layers  # 矩形光栅可以保持原样，或者也走统一流程

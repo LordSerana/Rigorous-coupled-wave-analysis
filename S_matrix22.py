@@ -29,6 +29,7 @@ def Set_Polarization(thetai,phi,wavelength,pTE,pTM,m,Nx,accuracy,grating,n,layer
     n:切片数
     '''
     Constant={}
+    Constant['Rough']=Rough
     Constant['thetai']=np.radians(thetai)
     Constant['phi']=np.radians(phi)
     n1=layers[0].n
@@ -122,7 +123,6 @@ def Compute(Constant,layers):
     return Constant
 
 def Slice(layers, grating, Constant):
-    Constant['n_extra'] = 0
     n = Constant['n']
     
     if grating.name != "Rectangular":
@@ -271,7 +271,7 @@ grating=Sinusoidal(4*1e-6,1,2*1e-6)
 #===============平常情况
 Constant=Set_Polarization(thetai=0,phi=0,wavelength=632.8*1e-9,pTE=1,pTM=0,m=40,Nx=2**10,accuracy=1e-9,
                         grating=grating,n=50,layers=layers,Rough=False)
-#增加粗糙度功能=================================================================================================
+#==============================================增加粗糙度功能=================================================
 Constant['roughness_rms']=1*1e-7
 Constant['corr_length']=0.02*grating.T
 Constant['seed']=648
