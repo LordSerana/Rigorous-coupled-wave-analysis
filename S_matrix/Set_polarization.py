@@ -81,13 +81,4 @@ def Set_Polarization(thetai,phi,wavelength,pTE,pTM,m,Nx,accuracy,grating,n,layer
     Constant['W0']=W0
     Constant['V0']=V0
     Constant['W']=W
-    if Rough==True:
-        h=Roughness(0.32*1e-6,Nx,115)
-        Constant['Rough']=h
     return Constant
-
-def Roughness(Ra,Nx,seed=None):
-    rng=np.random.default_rng(seed)
-    h=rng.normal(size=Nx)
-    h=h/np.mean(np.abs(h))*Ra
-    return h

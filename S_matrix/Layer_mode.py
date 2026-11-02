@@ -11,24 +11,25 @@ def layer_mode(layer,Constant,case='FFT'):
     depth=Constant['depth_max']/Constant['n']
     if case=='FFT':
         epsilon=np.ones(Nx,dtype=complex)
-        if Constant['n_extra']>1:
-            temp=np.where(Constant['Rough']>(Constant['n_extra']-1)*depth)[0][0]
-            epsilon[temp]=Constant['n2']**2
-            Constant['Rough'][temp]=(Constant['n_extra']-1)*depth
-            Constant['n_extra']-=1
-        elif Constant['n_extra']==1:
-            temp=np.where(Constant['Rough']>0)[0]
-            epsilon[temp]=Constant['n2']**2
-            Constant['Rough'][temp]=0
-            Constant['n_extra']=0
-        else:
-            width=int(layer.fill_factor*Nx)
-            q0=int(Nx//2)
-            start=q0-width//2
-            end=start+width
-            epsilon[start:end]=layer.n**2
-            shift=int(layer.offset*Nx)
-            epsilon=np.roll(epsilon,shift)
+        # if Constant['n_extra']>1:
+        #     temp=np.where(Constant['Rough']>(Constant['n_extra']-1)*depth)[0][0]
+        #     epsilon[temp]=Constant['n2']**2
+        #     Constant['Rough'][temp]=(Constant['n_extra']-1)*depth
+        #     Constant['n_extra']-=1
+        # elif Constant['n_extra']==1:
+        #     temp=np.where(Constant['Rough']>0)[0]
+        #     epsilon[temp]=Constant['n2']**2
+        #     Constant['Rough'][temp]=0
+        #     Constant['n_extra']=0
+        # else:
+        width=int(layer.fill_factor*Nx)
+        q0=int(Nx//2)
+        start=q0-width//2
+        end=start+width
+        epsilon[start:end]=layer.n**2
+        shift=int(layer.offset*Nx)
+        epsilon=np.roll(epsilon,shift)
+        
         epsilon_recip=1/epsilon
         fourier_coeffi=np.fft.fftshift(np.fft.fft(epsilon,axis=0)/epsilon.shape[0])
         fourier_coeffi_recip=np.fft.fftshift(np.fft.fft(epsilon_recip,axis=0)/epsilon.shape[0])

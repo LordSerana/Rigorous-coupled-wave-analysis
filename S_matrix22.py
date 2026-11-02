@@ -129,7 +129,7 @@ def Slice(layers, grating, Constant):
         # 假设 grating 已经有 height_array 属性（如果没有，先生成理想高度并加粗糙度）
         if not hasattr(grating, 'height_array'):
             x, s = Generate_height_array(grating, grating.T, Constant['Nx'])
-            if 'roughness_rms' is Constant:
+            if 'roughness_rms' in Constant:
                 s = Add_roughness(s, grating.T, Constant['Nx'], 
                                   rms=Constant['roughness_rms'],
                                   corr_length=Constant['corr_length'],
@@ -271,11 +271,16 @@ grating=Sinusoidal(4*1e-6,1,2*1e-6)
 #===============平常情况
 Constant=Set_Polarization(thetai=0,phi=0,wavelength=632.8*1e-9,pTE=1,pTM=0,m=40,Nx=2**10,accuracy=1e-9,
                         grating=grating,n=50,layers=layers,Rough=False)
-layers=Slice(layers,grating,Constant)
+#增加粗糙度功能=================================================================================================
+Constant['roughness_rms']=1*1e-7
+Constant['corr_length']=0.02*grating.T
+Constant['seed']=648
 # x,s_ideal=Generate_height_array(grating=grating,T=grating.T,Nx=Constant['Nx'])
-# s_rough=Add_roughness(s=s_ideal,T=grating.T,Nx=Constant['Nx'],rms=1*1e-9,corr_length=0.2*grating.T,seed=648)
+# s_rough=Add_roughness(s=s_ideal,T=grating.T,Nx=Constant['Nx'],rms=1*1e-7,corr_length=0.02*grating.T,seed=648)
 # plt.plot(x,s_rough)
 # plt.show()
+#============================================================================================================
+layers=Slice(layers,grating,Constant)
 Constant=Compute(Constant,layers)
 #=========打印输出
 start_order=Constant['Ref_set'][0]

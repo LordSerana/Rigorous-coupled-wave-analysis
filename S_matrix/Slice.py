@@ -8,6 +8,7 @@ def Slice(layers,grating,Constant):
     '''
     n:切片数
     layers:传进仿真层,对中间层进行切片,并返回新的layers函数
+    n_extra参数应该只是上一版本掺入粗糙度参数的中间产物,应该可以去掉了
     '''
     Constant['n_extra']=0
     n=Constant['n']
