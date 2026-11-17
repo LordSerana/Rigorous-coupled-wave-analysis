@@ -2,6 +2,8 @@ import numpy as np
 from Set_polarization import Set_Polarization
 from Layer import Layer
 from Compute import Compute
+from Slice import Slice
+from Grating import Triangular
 import matplotlib.pyplot as plt
 from openpyxl import load_workbook
 
@@ -17,6 +19,7 @@ layers=[
 Constant=Set_Polarization(thetai=0,phi=0,wavelength=632.8*1e-9,pTE=1,pTM=0,
                           m=50,Nx=2**10,accuracy=1e-9,grating=None)
 ########################数据的输出######################################
+layers=Slice(layers=layers,grating=Triangular,Constant=Constant)
 Constant=Compute(Constant,layers,True)
 R_effi=Constant['R_effi']
 # file_path='C:/Users/123/Desktop/仿真对比数据.xlsx'

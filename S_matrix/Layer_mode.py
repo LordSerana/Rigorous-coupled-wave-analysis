@@ -8,7 +8,6 @@ def layer_mode(layer,Constant,case='FFT'):
     #####从介电常数序列计算Toeplitze矩阵
     Nx=Constant['Nx']
     m=Constant['n_Tr']//2
-    depth=Constant['depth_max']/Constant['n']
     if case=='FFT':
         epsilon=np.ones(Nx,dtype=complex)
         # if Constant['n_extra']>1:
@@ -36,6 +35,7 @@ def layer_mode(layer,Constant,case='FFT'):
         E=Toeplitz(fourier_coeffi,2*m+1)
         E_recip=Toeplitz(fourier_coeffi_recip,2*m+1)
     else:
+        #解析法,不推荐使用
         fourier_coeffi=np.zeros(4*m+1,dtype=complex)
         fourier_coeffi_recip=np.zeros(4*m+1,dtype=complex)
         temp=Constant['n1']**2-layer.n**2
