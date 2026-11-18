@@ -140,9 +140,11 @@ def Slice(layers, grating, Constant):
             x = np.linspace(0, grating.T, len(s), endpoint=False)
         
         layer0 = layers[0]
+        layer_minus1=layers[-1]
         layer_new = [layer0]
-        Refrac_idx = layers[1].n
         depth = Constant['depth_max'] / n   # 每层厚度
+        eps_bg=1
+        eps_mat=layers[1].n**2
         #===========具体的切片操作==========================
         s_current=s.copy()
         for i in range(n):
@@ -154,16 +156,21 @@ def Slice(layers, grating, Constant):
             #=====削皮阈值=====
             h_cut=h_max-layer_thickness
             #=====削皮=======
-            s_new=np.where(s_current>=h_cut,h_cut,s_current)
+            s_new=np.where(s_current>=h_cut,s_current-layer_thickness,s_current)
             #========防止出现负高度========
             s_new=np.maximum(s_new,0)
             #=======计算该层体积==========
-            
+            delta=s_current-s_new#被切除的纵向厚度
+            dx=grating.T/len(x)#横向等距的x大小
+            # volume_cut=np.sum(delta)*dx
+            frac=delta/layer_thickness#材料的逐点体积分数
+            eps_profile=eps_bg+(eps_mat-eps_bg)*frac
+            layer=Layer(t=layer_thickness,epsilon=eps_profile)
             layer_new.append(layer)
-        
+            #=========更新高度序列==========
+            s_current=s_new
         # 加上基底等后续层
-        for layer in layers[2:]:
-            layer_new.append(layer)
+        layer_new.append(layer_minus1)
         return layer_new
     else:
         return layers  # 矩形光栅可以保持原样，或者也走统一流程
@@ -243,20 +250,45 @@ def slice_from_height_array(x, s, T, z_i, z_i1):
     
     return fill_factor, offset
 
+def Eps_profile_from_heights(x,heights,eps_list,z_low,z_high):
+    '''
+    heights:列表,每个元素是一条“界面高度”数组,自下而上排列。heights[j]表示第j层介质的上表面高度
+    eps_list:列表
+    '''
+    Nx=len(x)
+    dz=z_high-z_low
+    eps_profile=np.zeros(Nx,dtype=np.complex128)
+    if dz<=0:
+        return eps_profile
+    for ix in range(Nx):
+        h_at_x=[h[ix] for h in heights]#该横向位置上的所有界面高度
+        #收集落在当前切片内的界面高度
+        bounds=[z_low,z_high]
+        for hv in h_at_x:
+            if z_low<hv<z_high:
+                bounds.append(hv)
+        bounds.sort()
+        #对每个小区间,取中点判断它属于哪一层材料
+        total_eps=0.0
+        for k in range(len(bounds)-1):
+            b1=bounds[k]
+            b2=bounds[k+1]
+            length=b2-b1
+            z_mid=0.5*(b1+b2)
+            #统计有多少个界面的高度<=z_mid,以此确定z_mid落在第几层材料
+            
 #============仿真设备层==============================
 layers=[
-    Layer(n=1,t=1*1e-6),
-    Layer(n=1.4482+7.5367j),
-    Layer(n=1.4482+7.5367j,t=4*1e-6),
+    Layer(n=1,t=1*1e-6),#上方空气层
+    Layer(n=1.4482+7.5367j),#光栅层
+    Layer(n=1.4482+7.5367j,t=4*1e-6),#基底层
     ]
 grating=Sinusoidal(4*1e-6,1,2*1e-6)
 # grating=Triangular(4*1e-6,36,1)
 # grating=Blazed(T=4*1e-6,angle=30,fill_factor=1,n=1)
 #====================================================
 #从左侧入射定义为-，衍射光在0级光左侧为负，右侧为正
-#=======切片收敛性校验==========================
-
-#===============平常情况
+#===============平常情况=============
 Constant=Set_Polarization(thetai=0,phi=0,wavelength=632.8*1e-9,pTE=1,pTM=0,m=40,Nx=2**10,accuracy=1e-9,
                         grating=grating,n=50,layers=layers,Rough=False)
 #==============================================增加粗糙度功能=================================================
