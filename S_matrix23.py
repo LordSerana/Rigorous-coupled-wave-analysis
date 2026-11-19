@@ -13,6 +13,7 @@ from openpyxl import load_workbook
 from S_matrix.CheckConvergence import CheckConvergence
 import time
 from matplotlib import pyplot as plt
+from bisect import bisect_right
 
 #添加粗糙度的尝试
 
@@ -29,6 +30,11 @@ def Set_Polarization(thetai,phi,wavelength,pTE,pTM,m,Nx,accuracy,grating,n,layer
     n:切片数
     '''
     Constant={}
+    #========增加stack参数============
+    if len(layers)>3:
+        Constant['stack']=[(layer.n,layer.t) for layer in layers[1:-1]]
+    else:
+        Constant['stack']=[(layers[1].n,grating.depth)]
     Constant['Rough']=Rough
     Constant['thetai']=np.radians(thetai)
     Constant['phi']=np.radians(phi)
@@ -126,6 +132,11 @@ def Slice(layers, grating, Constant):
     n = Constant['n']
     
     if grating.name != "Rectangular":
+        layer0 = layers[0]
+        layer_minus1=layers[-1]
+        layer_new = [layer0]
+        eps_bg=layers[0].n**2
+        #============单层光栅情况====================================
         # 假设 grating 已经有 height_array 属性（如果没有，先生成理想高度并加粗糙度）
         if not hasattr(grating, 'height_array'):
             x, s = Generate_height_array(grating, grating.T, Constant['Nx'])
@@ -138,38 +149,38 @@ def Slice(layers, grating, Constant):
         else:
             s = grating.height_array
             x = np.linspace(0, grating.T, len(s), endpoint=False)
-        
-        layer0 = layers[0]
-        layer_minus1=layers[-1]
-        layer_new = [layer0]
+        #===========材料堆叠=====================
+        if 'stack' in Constant:
+            stack=Constant['stack']
+        else:
+            n_mat=layers[1].n
+            depth_max=Constant['depth_max']
+            stack=[(n_mat,depth_max)]#单层,厚度足够大
+        #==========垂直切片循环=================
         depth = Constant['depth_max'] / n   # 每层厚度
-        eps_bg=1
-        eps_mat=layers[1].n**2
         #===========具体的切片操作==========================
-        s_current=s.copy()
         for i in range(n):
-            h_max=np.max(s_current)
-            if h_max<=1e-12:
-                break
-            #=====实际该层厚度=====
-            layer_thickness=min(depth, h_max)
-            #=====削皮阈值=====
-            h_cut=h_max-layer_thickness
-            #=====削皮=======
-            s_new=np.where(s_current>=h_cut,s_current-layer_thickness,s_current)
-            #========防止出现负高度========
-            s_new=np.maximum(s_new,0)
-            #=======计算该层体积==========
-            delta=s_current-s_new#被切除的纵向厚度
-            dx=grating.T/len(x)#横向等距的x大小
-            # volume_cut=np.sum(delta)*dx
-            frac=delta/layer_thickness#材料的逐点体积分数
-            eps_profile=eps_bg+(eps_mat-eps_bg)*frac
-            layer=Layer(t=layer_thickness,epsilon=eps_profile)
+            z_low=i*depth
+            z_high=z_low+depth
+            eps_profile=np.zeros(len(x),dtype=complex)
+            for ix in range(len(x)):
+                s_ix=s[ix]
+                #========该切片与结构的重叠区间[a,b]=======
+                if z_low>=s_ix or z_high<=0.0:
+                    eps=eps_bg
+                else:
+                    a=max(z_low,0.0)
+                    b=min(z_high,s_ix)
+                    frac_struct=(b-a)/depth#结构中材料占该切片厚度的比例
+                    if b-a>0:
+                        eps_struct=Average_eps_in_interval(a,b,stack)
+                        eps=eps_bg*(1-frac_struct)+eps_struct*frac_struct
+                    else:
+                        eps=eps_bg
+                eps_profile[ix]=eps
+            layer=Layer(t=depth,epsilon=eps_profile)
             layer_new.append(layer)
-            #=========更新高度序列==========
-            s_current=s_new
-        # 加上基底等后续层
+        #==========添加基底等后续层
         layer_new.append(layer_minus1)
         return layer_new
     else:
@@ -276,7 +287,34 @@ def Eps_profile_from_heights(x,heights,eps_list,z_low,z_high):
             length=b2-b1
             z_mid=0.5*(b1+b2)
             #统计有多少个界面的高度<=z_mid,以此确定z_mid落在第几层材料
-            
+            idx=bisect_right(h_at_x,z_mid)
+            total_eps+=eps_list[idx]*length
+        eps_profile[ix]=total_eps/dz
+    return eps_profile
+
+def Average_eps_in_interval(z_low,z_high,stack):
+    '''
+    计算z从z_low到z_high之间(均在结构内部)的平均介电常数
+    stack:[(n1,h1),(n2,h2),...],从基底表面(z=0)向上排列
+    '''
+    #===========构建层边界[0,h1,h1+h2,...]
+    boundaries=[0.0]
+    for n,h in stack:
+        boundaries.append(boundaries[-1]+h)
+    z=z_low
+    total_eps=0.0
+    while z<z_high:
+        #======找到z所在的层索引
+        idx=bisect_right(boundaries,z)-1
+        #======该层上边界
+        z_next=min(z_high,boundaries[idx+1])
+        length=z_next-z
+        #=====该层介电常数
+        eps_i=stack[idx][0]**2
+        total_eps+=eps_i*length
+        z=z_next
+    return total_eps/(z_high-z_low)
+
 #============仿真设备层==============================
 layers=[
     Layer(n=1,t=1*1e-6),#上方空气层
