@@ -2,15 +2,20 @@ import numpy as np
 from scipy.integrate import quad
 
 class Triangular():
-    def __init__(self,T,base_angle,fill_factor):
+    def __init__(self,T,base_angle,fill_factor,Nx=1024):
         '''
         T:周期,base_angle:三角光栅底角,fill_factor:占空比,amplitude:光栅槽深
+        默认Nx=1024,有需要可自行更改
         '''
         self.name="Triangular"
         self.T=T
         self.base_angle=np.radians(base_angle)
         self.fill_factor=fill_factor
         self.depth=T*fill_factor/2*np.tan(self.base_angle)
+        #=======构造光栅界面高度坐标数组====================
+        x=np.linspace(0,T,Nx,endpoint=False)
+        half=T/2
+        self.s=self.depth*2*np.abs(x-half)/T
     
     def profile(self):
         '''
@@ -34,11 +39,14 @@ class Triangular():
         return a_fun
 
 class Rectangular():
-    def __init__(self,T,fill_factor,depth):
+    def __init__(self,T,fill_factor,depth,Nx=1024):
         self.name="Rectangular"
         self.T=T
         self.fill_factor=fill_factor
         self.depth=depth
+        #=======构造光栅界面高度坐标数组====================
+        x=np.linspace(0,T,Nx,endpoint=False)
+        self.s=np.where(np.mod(x,T)<self.fill_factor*T,0.0,self.depth)
     
     def profile(self):
         def a_fun(x):
@@ -52,7 +60,7 @@ class Rectangular():
         return a_fun
 
 class Sinusoidal():
-    def __init__(self,T,fill_factor,depth):
+    def __init__(self,T,fill_factor,depth,Nx=1024):
         '''
         T:光栅周期;
         fill_factor:占空比;
@@ -62,6 +70,9 @@ class Sinusoidal():
         self.T=T
         self.fill_factor=fill_factor
         self.depth=depth
+        #=======构造光栅界面高度坐标数组====================
+        x=np.linspace(0,T,Nx,endpoint=False)
+        self.s=self.depth*0.5*(1+np.sin(2*np.pi*x/T-np.pi/2))
     
     def profile(self):
         def a_fun(x):
@@ -99,7 +110,7 @@ class Sinusoidal():
         return V
 
 class Blazed():
-    def __init__(self,T,angle,fill_factor,n):
+    def __init__(self,T,angle,fill_factor,n,Nx=1024):
         '''
         n:闪耀光栅的反射面在周期内的比例
         '''
@@ -109,6 +120,9 @@ class Blazed():
         self.fill_factor=fill_factor
         self.n=n
         self.depth=self.T*self.fill_factor*self.n*np.tan(self.angle)
+        #=======构造光栅界面高度坐标数组====================
+        x=np.linspace(0,T,Nx,endpoint=False)
+        self.s=self.depth*(x/T)
     
     def profile(self):
         def a_fun(x):

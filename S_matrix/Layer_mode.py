@@ -10,6 +10,7 @@ def layer_mode(layer,Constant,case='FFT'):
     m=Constant['n_Tr']//2
     if case=='FFT':
         if layer.epsilon is None:
+            #===========解析法计算的epsilon函数==============
             epsilon=np.ones(Nx,dtype=complex)
             width=int(layer.fill_factor*Nx)
             q0=int(Nx//2)
@@ -19,6 +20,7 @@ def layer_mode(layer,Constant,case='FFT'):
             shift=int(layer.offset*Nx)
             epsilon=np.roll(epsilon,shift)
         else:
+            #=========离散取值直接生成的epsilon函数
             epsilon=layer.epsilon
         epsilon_recip=1/epsilon
         fourier_coeffi=np.fft.fftshift(np.fft.fft(epsilon,axis=0)/epsilon.shape[0])
